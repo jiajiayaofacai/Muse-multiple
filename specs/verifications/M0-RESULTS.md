@@ -38,6 +38,25 @@ Rust 2.12.7 依赖在本机缓存不足且 crates.io 解析长时间等待；M0 
 
 这不是“认证通过”，也不是失败后的系统浏览器回退。没有真实 Muse/Meta 登录证据，不能宣称免重复登录。
 
+## 本轮续做：接管与关闭语义复核
+
+2026-11-23再次检查锁定依赖，并读取对应版本 docs.rs 的 `NewWindowResponse` 和 `WebviewEvent`。Context7连接失败；未以其失败结果或其他版本文档推断本机能力。
+
+Wry 的网页自关闭 handler 直接销毁独立 WebView 子容器 HWND；reparent 不替换此句柄。宿主 `CloseRequested.prevent_close()` 不在此调用链上，不能用来清理已迁移认证标签。Tauri公开 `WebviewEvent` 没有自关闭通知。
+
+这是源码事实与接口限制，不是已运行的认证弹窗实验。没有证明网页自关闭会同步清理 Rust tab 注册表，故不启用隐藏宿主接管路线。具体源码位置、最小复核命令和重新开闸条件见 [原生技术闸门](../../app/src-tauri/src/browser/GATE.md)。
+
+本轮实际复跑：
+
+- TypeScript类型检查、lint、34个测试、Vite构建全部通过；合成HTTP站点7个测试通过。
+- `cargo fmt --check`、`cargo clippy --locked --all-targets -- -D warnings`、`cargo test --locked`（9个）、`cargo build --locked`全部通过。MSVC仍有已记录的linker stdout warning，退出码为0。
+- 原始原生探测两次在侧栏账号选中等待处超时。失败快照显示原生已激活B但侧栏仍选中A；没有将超时当作隔离测试通过。
+- 将侧栏的元素句柄JS点击改为 Playwright `locator.click()`，利用其挂载、稳定性与可交互检查，消除点击旧DOM节点的风险；没有延长等待、重试失败断言或修改产品行为。`node --check app/tests/e2e/native-probe.cjs`通过。
+- 修改后使用两个互不复用的全新scratch资料目录，分别运行 `node app/tests/e2e/native-probe.cjs`，均退出0、6项机制检查通过。只包含A/B合成存储、同账号共享、远程管理拒绝、明确阻止新窗口和最后标签空态；**不包含成功认证**。
+- 未运行延迟reparent/原生自关闭实验、真实Muse登录或跨站HTTPS认证。本轮没有新增Rust生产代码、unsafe、依赖或权限。
+
+继续推进需要用户批准最小上游修复/固定依赖补丁的评估范围，或提供可验证的新版本能力。保持同窗认证、账号隔离与无自有unsafe的要求不变；M1—M6继续暂停。
+
 ## 尚未完成/未宣称
 
 - 已修复并回归：同目录实例锁；壳重载布局序号握手；瞬态busy有界重试；DPI亚像素边界向内取整。原生壳重载及A/B探测复测通过。最小化时0×0客户区会导致显示请求拒绝，已显式恢复测试窗口；完整最小化/托盘生命周期仍未验收。

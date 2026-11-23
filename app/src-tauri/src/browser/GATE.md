@@ -20,12 +20,45 @@
 
 ### 尚待验证的实验路线（没有启用）
 
-先用 `.window_features(features)` 建隐藏宿主并返回 Create，等待 runtime/WebView2 完成真正接管后再 reparent。必须证明：如何可靠得知接管完成，而不是假定 `run_on_main_thread` 的排队时序；隐藏宿主能否安全保留/销毁；`window.close()` 是否只关闭认证标签而不关闭 shell；跨来源 opener/postMessage、嵌套请求、焦点和来源页先关闭。当前没有安全、可验证的完成边界，故未启用；并非宣称 Tauri 所有安全路线都不可能。
+先用 `.window_features(features)` 建隐藏宿主并返回 Create，等待接管后再 reparent。若 builder 自行加载目标 URL，其 page-load 不能证明接管完成；空白 builder 的后续目标导航只是候选边界。`about:blank`、接管失败及嵌套请求仍需验证。本轮未启用此实验。
 
-官方文档复核入口（待主代理按实际锁版本核对）：
-- https://docs.rs/tauri/2.12.7/tauri/webview/enum.NewWindowResponse.html
-- https://docs.rs/tauri/2.12.7/tauri/webview/struct.WebviewWindowBuilder.html#method.window_features
-- https://docs.rs/tauri/2.12.7/tauri/webview/struct.Webview.html#method.reparent
+### 2026-11-23：关闭语义复核
+
+以下是锁定依赖的源码事实，不是已执行的认证实验：
+
+- `wry-0.55.1/src/webview2/mod.rs:109–117,224–265`：为每个 WebView 创建独立 child 容器 HWND。
+- 同文件 `615–619`：网页 `window.close()` 的 `WindowCloseRequested` handler 直接执行 `DestroyWindow(hwnd)`；捕获的是该容器，不是 Tauri 宿主窗口。
+- 同文件 `1691–1709`：reparent 使用 `SetParent(self.hwnd, ...)`，不替换容器 HWND 或关闭 handler。
+- `tao-0.35.3/src/platform_impl/windows/event_loop.rs:1061–1078`：宿主 `CloseRequested` 由宿主 WM_CLOSE 产生。销毁 WebView 子容器不经过此关闭路径。
+- `tauri-2.11.5/src/app.rs` 的 `WebviewEvent` 仅公开 DragDrop；没有网页自关闭事件。已与该版本官方文档核对。
+- `tauri-2.11.5/src/webview/webview_window.rs:425–432,2216–2223`：page-load 包装对象按 Webview 当前归属重建；reparent 后其窗口可能已是 shell。不得对该包装对象调用窗口级 close/destroy 来关闭认证标签。
+- `tauri-2.11.5/src/webview/mod.rs:1501–1505`：明确的 `Webview::close()` 走单视图关闭与管理器清理，不能假定 Wry 自行销毁容器等价于调用此方法。
+
+因此，“隐藏宿主 `CloseRequested.prevent_close()` 拦截网页关闭，再清理 tab”不成立。源码支持迁移后网页 close 的直接目标仍是独立子容器，但没有证明 Rust 注册表会自动清理，也没有原生实测证明完整生命周期安全。不能把这两件事混为一谈。
+
+最小调用链复核（源码检查，不是崩溃复现；在依赖已下载的本机执行）：
+
+```powershell
+$cargoHome = if ($env:CARGO_HOME) { $env:CARGO_HOME } else { Join-Path $HOME '.cargo' }
+$registry = Get-ChildItem (Join-Path $cargoHome 'registry\src') -Directory |
+  Where-Object { Test-Path (Join-Path $_.FullName 'wry-0.55.1\src\webview2\mod.rs') } |
+  Select-Object -First 1 -ExpandProperty FullName
+if (-not $registry) { throw '缺少锁定依赖源码，不能复核' }
+Select-String (Join-Path $registry 'wry-0.55.1\src\webview2\mod.rs') `
+  -Pattern 'add_WindowCloseRequested|DestroyWindow\(hwnd\)|SetNewWindow|SetParent\(self.hwnd' -Context 1,2
+Select-String (Join-Path $registry 'tauri-2.11.5\src\app.rs') `
+  -Pattern 'enum WebviewEvent' -Context 0,8
+```
+
+重新开闸至少需要可观测的接管边界，以及网页自关闭到单标签清理的可靠原生通知。需另外批准评估最小上游修复/固定依赖补丁，或验证确实提供这些能力的新版本；不能仅凭升级版本号判断已解决。当前不新增自有 unsafe，不覆盖网页 `window.close`，不放开远程 IPC，不降级独立弹窗或系统浏览器。M1—M6继续暂停。
+
+已按实际锁版本复核的官方文档：
+- https://docs.rs/tauri/2.11.5/tauri/webview/enum.NewWindowResponse.html
+- https://docs.rs/tauri/2.11.5/tauri/enum.WebviewEvent.html
+
+源码复核入口：
+- https://docs.rs/tauri/2.11.5/tauri/webview/struct.WebviewWindowBuilder.html#method.window_features
+- https://docs.rs/tauri/2.11.5/tauri/webview/struct.Webview.html#method.reparent
 
 ## 公开 Rust API
 

@@ -40,7 +40,7 @@ if (!endpoint || !dataRoot || process.env.MUSE_M0_ALLOW_TEST_WRITES !== '1') {
   const newTab = async account => {
     const state = await act({ type: 'createTab', accountId: account.id, url: site });
     const tab = state.tabs.at(-1);
-    await shell.locator(`.sidebar [data-action="select-account"][data-id="${account.id}"]`).evaluate(button => button.click());
+    await shell.locator(`.sidebar [data-action="select-account"][data-id="${account.id}"]`).click();
     await shell.waitForFunction(id => document.querySelector(`.sidebar [data-id="${id}"]`)?.getAttribute('aria-current') === 'page', account.id);
     if (!accountBrowsers.has(account.id)) {
       const findPort = async directory => {

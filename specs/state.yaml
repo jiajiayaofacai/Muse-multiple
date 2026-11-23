@@ -19,3 +19,11 @@ notes:
   - Native mechanism checks use synthetic data in a dedicated scratch profile.
   - window.open is explicitly denied until safe same-window authentication handling is proven.
   - M1-M6 remain gated; no real Muse login or session persistence claim.
+authentication_review:
+  date: 2026-11-23
+  locked_runtime: tauri-2.11.5/runtime-wry-2.11.4/wry-0.55.1
+  host_close_interception: ruled-out-by-source
+  native_self_close_cleanup: no-public-event-verified
+  deferred_reparent_experiment: not-enabled
+  native_probe_reruns: two-clean-roots-six-checks-each-passed
+  next_action: user-approval-for-upstream-or-pinned-dependency-patch-evaluation
