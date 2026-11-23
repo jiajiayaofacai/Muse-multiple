@@ -93,3 +93,9 @@ loadState 只在真实 PageLoadEvent 更新（Started/Finished）；Finished 不
 - 实现逻辑后同命令得到 4 passed / 0 failed。产物仅写会话 scratch，不进入仓库。
 - registry 冷启动/最后标签测试、storage 合成临时目录原子覆盖/损坏测试已写，需主代理 cargo test 执行；本代理未运行 Cargo 构建以免与主代理冲突。
 - 主代理已执行完整crate格式/Clippy/测试/构建及6项专用WebView2机制检查，详细通过/未测内容见上方最终验证记录；同窗认证仍未验证。
+
+## 受控评估更新（2026-11-23）
+
+用户随后批准只评估、不应用的受控实验。官方最新稳定与已核查开发分支未发现完整接口组合。scratch内Wry直接child接管＋最小原生关闭hook的最终合成矩阵8/8通过，但曾出现未定位的 `0x80070057` 创建失败，Tauri层适配和接管失败回报仍未实现。
+
+详见[隔离评估报告](../../../../specs/archive/spikes/SPIKE-m0-child-auth.md)。该证据只证明底层路线值得继续实验，**不解除本模块M0闸门**。本轮没有应用依赖补丁或改变生产Deny行为；下一步由用户决定是否开展固定版本Tauri副本实验。

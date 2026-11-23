@@ -26,4 +26,12 @@ authentication_review:
   native_self_close_cleanup: no-public-event-verified
   deferred_reparent_experiment: not-enabled
   native_probe_reruns: two-clean-roots-six-checks-each-passed
-  next_action: user-approval-for-upstream-or-pinned-dependency-patch-evaluation
+  next_action: user-decision-on-isolated-tauri-patch-spike
+controlled_evaluation:
+  approval: user-approved-evaluation-only-no-production-application
+  report: specs/archive/spikes/SPIKE-m0-child-auth.md
+  official_upgrade: no-complete-interface-found
+  wry_scratch_spike: final-eight-checks-passed
+  stability: earlier-hresult-0x80070057-unresolved
+  tauri_integration: not-implemented
+  production_dependencies: unchanged
