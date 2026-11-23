@@ -136,4 +136,4 @@ verify: `git diff 633c229 -- app/src-tauri/Cargo.toml app/src-tauri/Cargo.lock '
 
 正式工程回归：本轮再次执行typecheck、lint、TS测试（34）、合成站点测试（7）、Vite build，均退出0；crate的fmt、Clippy、Rust测试（9）、build均退出0。MSVC已有linker stdout warning仍存在。未重跑正式app的原生探测，因为生产代码未变；不要将scratch的8项计入其原有6项。
 
-文档本地链接存在，生产边界差异为空，`git diff --check`通过。额外网页工具打开对应docs.rs页面失败；官方版本结论来自本轮已成功下载的官方固定标签源码。
+文档本地链接存在，生产边界差异为空，`git diff --check`通过。另经客户端成功获取 [Tauri 2.12.7 NewWindowResponse文档](https://docs.rs/tauri/2.12.7/tauri/webview/enum.NewWindowResponse.html)，确认Create仍接收WebviewWindow，与本轮下载的官方固定标签源码一致。
