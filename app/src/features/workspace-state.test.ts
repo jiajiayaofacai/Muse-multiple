@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { WorkspaceSnapshot } from '../../contracts/workspace';
-import { accountName, navigationUrl, acceptSnapshot, workspaceCounts } from './workspace-state';
+import { accountName, navigationUrl, acceptSnapshot, workspaceCounts, accountNewWindowDiagnostic } from './workspace-state';
 
 const snapshot = (revision: number): WorkspaceSnapshot => ({
   revision, accounts: [], tabs: [], runtimes: [], diagnostics: [], activeAccountId: null,
@@ -61,5 +61,56 @@ describe('完整快照 revision', () => {
     }));
     expect(workspaceCounts(state)?.resident).toBe(2);
     expect(workspaceCounts(state)?.sleeping).toBe(1);
+  });
+});
+
+describe('账号新窗口受限诊断', () => {
+  const withAccounts = (): WorkspaceSnapshot => ({
+    ...snapshot(5),
+    accounts: ['a', 'b'].map(id => ({ id, name: id.toUpperCase(), note: '', lastUsedAt: 0 })),
+    diagnostics: [
+      { id: 3, timestamp: 30, level: 'warn', accountId: 'b', code: 'new_window_blocked', safeMessage: 'B 请求受限' },
+      { id: 1, timestamp: 10, level: 'warn', accountId: 'a', code: 'new_window_blocked', safeMessage: 'A 较早请求受限' },
+      { id: 4, timestamp: 40, level: 'info', accountId: 'a', code: 'login_verification_pending', safeMessage: '待验证' },
+      { id: 2, timestamp: 20, level: 'warn', accountId: 'a', code: 'new_window_blocked', safeMessage: 'A 最近请求受限' },
+      { id: 5, timestamp: 50, level: 'warn', accountId: null, code: 'new_window_blocked', safeMessage: '无来源记录' },
+    ],
+  });
+
+  it('仅按来源账号选择最新受限事件，不把 B 的事件显示给 A', () => {
+    const state = withAccounts();
+    expect(accountNewWindowDiagnostic(state, 'a')?.id).toBe(2);
+    expect(accountNewWindowDiagnostic(state, 'b')?.id).toBe(3);
+    expect(state.diagnostics.map(item => item.id)).toEqual([3, 1, 4, 2, 5]);
+  });
+
+  it('无快照、无选择、无归属事件或已移除来源账号时不展示', () => {
+    const state = withAccounts();
+    expect(accountNewWindowDiagnostic(null, 'a')).toBeNull();
+    expect(accountNewWindowDiagnostic(state, null)).toBeNull();
+    expect(accountNewWindowDiagnostic(state, 'removed')).toBeNull();
+    state.accounts = state.accounts.filter(account => account.id !== 'a');
+    expect(accountNewWindowDiagnostic(state, 'a')).toBeNull();
+    state.diagnostics = state.diagnostics.filter(item => item.accountId !== 'b');
+    expect(accountNewWindowDiagnostic(state, 'b')).toBeNull();
+  });
+
+  it('来源标签已关闭或视图未驻留时仍是该账号的历史事件，而非连接成功', () => {
+    const state = withAccounts();
+    state.tabs = [];
+    state.runtimes = [{ accountId: 'a', lifecycle: 'sleeping', sessionStatus: 'unknown', activeTabId: null, protectionReasons: [] }];
+    expect(accountNewWindowDiagnostic(state, 'a')?.safeMessage).toBe('A 最近请求受限');
+    expect(state.runtimes[0].sessionStatus).toBe('unknown');
+  });
+
+  it('迟到和相同 revision 只由 acceptSnapshot 拒绝，不回滚受限提示', () => {
+    const current = withAccounts();
+    for (const revision of [4, 5]) {
+      const incoming = { ...withAccounts(), revision, diagnostics: [] };
+      const accepted = acceptSnapshot(current, incoming);
+      expect(accepted).toBe(current);
+      expect(accountNewWindowDiagnostic(accepted, 'a')?.id).toBe(2);
+    }
+    expect(accountNewWindowDiagnostic(acceptSnapshot(current, snapshot(6)), 'a')).toBeNull();
   });
 });

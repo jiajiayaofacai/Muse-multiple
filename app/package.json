@@ -12,6 +12,7 @@
     "preview": "vite preview --host 127.0.0.1 --port 1421 --strictPort",
     "tauri": "tauri",
     "test:sites": "node --test tests/sites/server.test.cjs",
+    "test:connectors": "node --test tests/e2e/connector-fixture.test.cjs",
     "test:sites:start": "node tests/sites/server.cjs"
   },
   "dependencies": {

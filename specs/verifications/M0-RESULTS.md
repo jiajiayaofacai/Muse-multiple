@@ -7,7 +7,7 @@
 
 2026-11-23用户明确普通登录的验证码与可选两步验证都在原网页完成。本轮搜索Meta官方资料，并实际打开Muse未登录页面，确认电话/邮箱表单和“继续”；未发送验证码、未登录。完整证据分层见[网页登录基线](MUSE-LOGIN-BASELINE.md)。
 
-此前把popup接管作为开始普通登录验证的前置，现撤回；停止底层补丁研究。M0仍待原生工作台真实原页登录、A/B隔离及重建/重启恢复验收，不因文档更正判为通过。以下popup技术闸门及spike结论保留为历史新窗口能力记录，不再代表普通登录必须弹窗。本轮只改文档，没有新增程序测试通过结论。
+此前把popup接管作为普通登录前置的判断已撤回。用户随后明确了另一条连接器流程：连接应用时开新授权标签，完成自动关闭，Muse原页显示结果。现按两条流程分别推进，生产前后端状态已修正，原生接管只在独立副本验证；真实登录/连接结果仍未验收，不宣称M0通过。
 
 ## 自动检查
 
@@ -16,15 +16,16 @@
 | `npm --prefix app run typecheck` | PASS |
 | `npm --prefix app run lint` | PASS |
 | `npm --prefix app run build` | PASS |
-| `npm --prefix app run test` | PASS：34/34 TypeScript 测试，含握手、busy重试和亚像素布局复现 |
-| `npm --prefix app run test:sites` | PASS：7/7 合成 HTTP 站点测试 |
+| `npm --prefix app run test` | PASS：48/48 TypeScript测试，含来源账号通知、转义、原页登录/外部授权说明 |
+| `npm --prefix app run test:sites` | PASS：8/8 合成HTTP站点测试 |
+| `npm --prefix app run test:connectors` | PASS：3个普通Edge交互场景（Node统计含父项4/4）；不是原生或真实连接器认证 |
 | `cargo fmt --check` | PASS |
 | `cargo clippy --locked --all-targets -- -D warnings` | PASS；MSVC 只报告 linker stdout warning |
-| `cargo test --locked` | PASS：9/9 Rust 单元测试 |
+| `cargo test --locked` | PASS：15/15 Rust单元测试，含来源账号、关闭/无效来源和诊断限量 |
 | `cargo build --locked` | PASS；MSVC 只报告 linker stdout warning |
 | 原生逻辑独立 rustc 测试 | PASS：4/4，子代理阶段 |
-| 专用 WebView2 原生探测 | PASS：6项机制检查；同窗认证断言为明确BLOCKED，不是认证通过 |
-| 原生壳页面重载 | PASS：重新握手后连接恢复，原生账号和标签数量保持 |
+| 专用 WebView2 原生探测 | PASS：8项生产机制检查；普通登录待验收，新窗口请求明确受限且不改变全局登录状态 |
+| 原生壳页面重载 | 先前记录PASS；本轮未重跑，不以其他检查替代 |
 
 Rust 2.12.7 依赖在本机缓存不足且 crates.io 解析长时间等待；M0 使用本机可复现的 Tauri 2.11.5/tauri-build 2.6.3，不能把结果直接宣称为 2.12.7 结果。
 
@@ -36,11 +37,11 @@ Rust 2.12.7 依赖在本机缓存不足且 crates.io 解析长时间等待；M0 
 - 远程页面调用 `workspace_snapshot` 未获得成功；命令由本地 shell label/origin 双重校验保护。普通浏览器模式只显示“未连接原生运行时”，不伪造账号。
 - 专用原生探测实际写读合成A/B：不同账号Cookie/localStorage/IndexedDB隔离，同账号标签共享正确资料，远程管理命令被拒绝；关闭最后标签后切走再回来不复活。六项检查通过。
 
-## 技术闸门
+## 当前生产能力边界
 
-**认证同窗标签：BLOCKED。** 当前新窗口回调明确 `Deny`，控制台记录：
+**普通登录待真实验收；连接器授权新标签未在生产接入。** 生产继续Deny新窗口，按有效来源账号/标签记录固定脱敏 `new_window_blocked`；启动为 `login_verification_pending`。拒绝一次新窗口请求不会修改全局登录状态、当前活跃账号或假报连接成功。
 
-> BLOCKED: 同窗认证未验证；同步 reparent 后 Create 的宿主查找不安全，异步接管与 close/宿主生命周期未获验证。window.open 已拒绝；未降级独立弹窗或系统浏览器。
+本轮三个并行泳道：前端features/shell、后端registry/views，以及仅scratch原生实验；共享契约、依赖、权限及Git由主代理维护。没有应用生产runtime补丁。
 
 这不是“认证通过”，也不是失败后的系统浏览器回退。没有真实 Muse/Meta 登录证据，不能宣称免重复登录。
 
@@ -77,3 +78,20 @@ M0 结论：**工程、前端契约、Rust 安全边界和普通原生标签已�
 用户批准“只评估，不应用”。完成官方接口调查和scratch中的独立Wry实验，结果见[评估报告](../archive/spikes/SPIKE-m0-child-auth.md)。最终一轮底层矩阵8/8通过，覆盖真实opener/source/postMessage、自关闭、嵌套、空白后导航及来源先关闭；此前一次 `0x80070057` 创建失败未定位。
 
 这是Wry实验，不是正式Tauri应用通过。没有应用补丁、升级生产依赖或变更权限；真实Muse认证与会话恢复仍未测，M1—M6仍暂停。报告建议先做固定版本Tauri副本实验，等待用户决定。
+
+## 本轮生产集成证据与失败记录
+
+- 前端新增当前账号受限请求提示（明确历史记录）、原页登录与外部授权分离的说明；后端启动不再全局BLOCKED，有效A来源在B活跃时仍归A，关闭/错误来源无副作用。
+- 前端先红7项后绿48项；后端启动状态先红后绿，最终Rust15项。父级重新运行typecheck/lint/TS测试、站点测试、Edge交互、Vite build及fmt/Clippy/Rust测试均退出0；cargo build亦退出0。MSVC已有linker stdout warning保留。
+- 合成连接状态仅在真实来源匹配回调后为connected-synthetic；NodeHTTP/source-shape不替代浏览器/原生语义。独立Edge测试实际覆盖合法回调后自关闭、仅关闭不成功、错误origin/兄弟source/账号及重放拒绝。
+- 本轮专用WebView2最终新资料根8项通过：普通登录待验收不全局阻塞；A/B合成存储隔离；同账号共享；远程管理拒绝；A后台发起/B活跃归属；账号提示与控制台布局不重建原生页；最后标签不复活。未使用真实账号。
+- 首次原生探测因测试服务缓存旧HTML而缺少新增connection-status探针，重启本轮服务后消除。第二次因DOM浮点边界差约0.000008像素使严格比较超时；实读几何确认无重叠，将探测容差改为0.01像素，不改产品CSS。第三个全新资料根完整通过，未把失败轮当通过。
+- 生产依赖版本、锁文件、权限及IPC契约未改。真实Muse登录、两步验证、第三方连接成功、真实会话恢复仍未测。
+
+## 隔离Tauri副本结果（不计作生产授权通过）
+
+原生代理完成固定四层依赖副本接线，两轮新合成资料各8/8通过，包含实际opener/environment、COM接管结果、跨来源回调、原生自关闭与tab/manager清理、嵌套/空白导航/来源先关闭，最终只剩shell+B且单窗口。主代理核对原始报告、两轮PASS计数、最终退出码及全量哈希；未亲自重跑该隔离矩阵。完整[实验报告](../archive/spikes/SPIKE-tauri-connector.md)。
+
+正式工程仍Deny，未应用这些补丁。COM失败/目标缺失/队列失败注入、更早deferral错误恢复、真实连接器和长期稳定性未验证，不能把两轮合成通过当作可直接发布。
+
+独立复核指出的探测盲点已修正：通知前设置marker，并比较实际原生视口尺寸与壳预留区、检查无布局错误提示；第四个新资料根8项复测通过，未再次扩大审查。

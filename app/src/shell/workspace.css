@@ -134,6 +134,8 @@ td { padding: 17px 20px; border-top: 1px solid var(--line); overflow-wrap: anywh
 .settings-note, .boundary-copy { color: #8491a6; font-size: 11px; line-height: 2; margin: 18px 0; }
 .settings-note .icon { width: 14px; height: 14px; }
 .browser-view { display: flex; flex-direction: column; min-height: 0; flex: 1; background: #fff; }
+.account-notice { max-height: 30%; overflow-y: auto; overflow-wrap: anywhere; }
+.account-notice p { margin: 3px 0 0; }
 .tabbar { display: flex; align-items: flex-end; gap: 7px; padding: 7px 10px 0; border-bottom: 1px solid var(--line); min-height: 44px; background: #f6f8fc; flex-shrink: 0; }
 .tabs { display: flex; align-items: flex-end; min-width: 0; gap: 4px; overflow-x: auto; }
 .tab { display: flex; align-items: center; gap: 6px; min-width: 145px; max-width: 225px; height: 36px; padding: 0 6px 0 11px; border: 1px solid transparent; border-bottom: 0; border-radius: 8px 8px 0 0; color: #7e8ba0; flex-shrink: 0; }

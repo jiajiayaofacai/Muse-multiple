@@ -5,6 +5,7 @@
 <h1>M0 合成父站：不是 Muse 登录</h1>
 <p>仅写入固定的合成账号 A/B，无密码、验证码输入，不记录真实凭据。两个端口是 cross-origin，不是完整跨站代理；Cookie 不按端口隔离，不能模拟所有第三方 Cookie / SameSite / HTTPS 条件。</p>
 <p>当前源：<output data-testid="current-origin"></output>；页面状态：<output data-testid="page-status" data-state="loading">loading</output></p>
+<p>合成连接器授权（不是普通登录），当前请求：<output data-testid="connection-status" data-state="not-connected">not-connected</output>。只有来源匹配的回调才标记 connected-synthetic；关页本身不代表成功。</p>
 <section aria-label="合成存储">
 <h2>浏览资料与标签存储</h2>
 <label>合成账号 <select data-testid="account-select"><option>A</option><option>B</option></select></label>

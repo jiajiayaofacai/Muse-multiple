@@ -15,6 +15,8 @@ npm --prefix app run tauri dev
 
 **普通登录基线：** 用户在该账号的Muse原网页输入电话/邮箱、验证码及适用的两步验证码，再进入agent对话。工作台不另造认证表单、不代收验证码，不在步骤推进时重建WebView。本轮仅核对了官方初始登录页；完整原生流程待用户自行验收。详见[调研与登录基线](../specs/verifications/MUSE-LOGIN-BASELINE.md)。
 
+**连接其他应用是另一条流程：** 用户点击连接后，在来源账号内的新授权标签完成授权，标签自动关闭，Muse原页显示连接结果。本轮已并行修正前端说明与来源账号提示、后端诊断/归属校验；生产新窗口仍受限，真实授权接管另在隔离Tauri副本验证，不能据关页假报连接成功。
+
 ## 合成站点与测试
 
 ```powershell
@@ -28,6 +30,7 @@ npm --prefix app run typecheck
 npm --prefix app run lint
 npm --prefix app run test
 npm --prefix app run test:sites
+npm --prefix app run test:connectors
 npm --prefix app run build
 Push-Location app/src-tauri
 cargo fmt --check
@@ -37,9 +40,11 @@ cargo build --locked
 Pop-Location
 ```
 
+`test:connectors` 使用本机Microsoft Edge的独立无头临时浏览器及合成站点，检查合法回调/关闭、仅关闭、错误来源/账号和重放。它不连接真实Muse，不代替原生授权测试；未安装Edge时需先明确测试环境，不把跳过记为通过。
+
 ## M0 明确限制
 
-- **真实原页登录、账号隔离及重启恢复仍待验收，不等于普通登录依赖popup。** 生产代码仍拒绝window.open，旧控制台闸门文案本次未改；这是独立的新窗口能力缺口，不能当作真实登录已失败的证据。底层补丁研究已暂停，详见[能力记录](src-tauri/src/browser/GATE.md)。
+- **真实原页登录、账号隔离及重启恢复仍待验收，不等于普通登录依赖popup。** 启动已改为 `login_verification_pending`，不再全局BLOCKED。生产仍拒绝window.open；只对有效发起账号/标签记录 `new_window_blocked`，不更改全局登录状态。前端提示是该账号历史受限请求，不是授权成功或当前登录失败。详见[能力记录](src-tauri/src/browser/GATE.md)。
 - 原生历史查询、完整网络失败回调、设置保存、自动休眠、托盘、删除/改名仍待后续阶段。未支持的操作明确提示，不伪造状态。
 - 账号元数据由 Rust 保存到应用数据目录下 `m0-verification`；浏览资料按稳定 UUID 隔离。它不是浏览器 Cookie 快照切换。
 - 同一资料目录使用进程生命周期独占文件锁，防止第二实例覆盖旧元数据。锁占用时明确拒绝启动。

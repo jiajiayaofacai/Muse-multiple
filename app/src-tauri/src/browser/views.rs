@@ -1,7 +1,7 @@
 use super::{
     logic,
     model::{AppError, LoadState},
-    registry::{self, BrowserState, GATE},
+    registry::{self, BrowserState},
 };
 use tauri::{
     AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, Rect, Url, Webview, WebviewBuilder,
@@ -120,14 +120,11 @@ pub(super) fn build(
         .on_new_window(move |_target, _features| {
             // Do not copy the URL into an unrelated child: that loses opener/postMessage.
             // See GATE.md for the synchronous reparent/Create hazard in the checked runtime.
-            update(&popup_app, &popup_account, &popup_tab, |r, _| {
-                r.snapshot.gate_status = GATE.into();
-                r.diagnostic(
-                    Some(&popup_account),
-                    "new_window_blocked",
-                    "已拒绝新窗口：同窗 opener/postMessage/close 技术闸门未通过；未打开替代窗口",
-                );
-            });
+            let recorded = registry::lock(&popup_app)
+                .is_ok_and(|mut r| r.record_new_window_blocked(&popup_account, &popup_tab));
+            if recorded {
+                let _ = emit(&popup_app);
+            }
             NewWindowResponse::Deny
         })
         .on_document_title_changed(move |view, title| {

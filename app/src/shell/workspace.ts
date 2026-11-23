@@ -3,7 +3,8 @@ import { NativeBridge, safeError } from '../bridge/native';
 import { NativeLayout } from '../bridge/layout';
 import { accountName, acceptSnapshot, navigationUrl, sessionLabels } from '../features/workspace-state';
 import { dashboardPage, homePage, settingsPage } from '../features/pages';
-import { emptyState, escapeHtml as esc, icon } from '../ui/markup';
+import { accountRequestNotice, browserEmptyState, tabLabel } from '../features/browser-content';
+import { escapeHtml as esc, icon } from '../ui/markup';
 import './workspace.css';
 
 type Route = 'home' | 'dashboard' | 'settings' | 'account';
@@ -36,6 +37,7 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
         <div class="tabbar"><div class="tabs" aria-label="网页标签"></div><button class="icon-button new-tab" data-action="new-tab" aria-label="新建标签" title="新建标签">${icon('plus')}</button></div>
         <div class="browser-toolbar"><button class="icon-button" data-action="back" aria-label="返回" title="返回">${icon('back')}</button><button class="icon-button" data-action="forward" aria-label="前进" title="前进">${icon('forward')}</button><button class="icon-button" data-action="reload" aria-label="刷新" title="刷新">${icon('reload')}</button><button class="icon-button" data-action="stop" aria-label="停止加载" title="停止加载">${icon('stop')}</button>
           <form class="address-form"><span>${icon('globe')}</span><input name="address" aria-label="网页地址" placeholder="输入 http:// 或 https:// 地址" autocomplete="off" spellcheck="false"><button type="submit" aria-label="前往地址">${icon('forward')}</button></form><span class="load-status" aria-live="polite"></span></div>
+        <div class="account-notice connection-banner" role="status" aria-live="polite" hidden></div>
         <div class="native-slot" data-testid="native-slot"><div class="slot-placeholder"></div></div>
       </section>
       <section id="workspace-console" class="console" aria-label="工作台控制台" hidden><header class="console-head"><strong>${icon('terminal')}控制台</strong><span>仅显示原生安全诊断</span><div class="console-tools"><label>级别 <select aria-label="筛选诊断级别"><option value="all">全部</option><option value="error">错误</option><option value="warn">警告</option><option value="info">信息</option></select></label><button class="text-button" data-action="clear-console">清空视图</button><button class="icon-button" data-action="console" aria-label="收起控制台">${icon('close')}</button></div></header><div class="logs" role="log" aria-live="off"></div><footer>最多显示最近 200 条 · 清空仅影响当前视图，不删除原生记录</footer></section>
@@ -52,6 +54,7 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
   const browser = find('.browser-view');
   const slot = find('.native-slot');
   const placeholder = find('.slot-placeholder');
+  const accountNotice = find('.account-notice');
   const tabs = find('.tabs');
   const address = find<HTMLInputElement>('.address-form input');
   const consolePanel = find('.console');
@@ -108,7 +111,10 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
   function renderBrowser(): void {
     const accountTabs = snapshot?.tabs.filter(tab => tab.accountId === selectedAccountId) ?? [];
     const active = currentTab();
-    tabs.innerHTML = accountTabs.map(tab => `<div class="tab ${tab.id === active?.id ? 'active' : ''}"><button class="tab-select" data-action="activate-tab" data-id="${esc(tab.id)}" ${tab.id === active?.id ? 'aria-current="page"' : ''} title="${esc(tab.title || '未命名网页')}">${tab.purpose === 'authentication' ? icon('shield') : icon('globe')}<span>${esc(tab.title || (tab.loadState === 'loading' ? '正在加载…' : '未命名网页'))}</span></button><button class="icon-button" data-action="close-tab" data-id="${esc(tab.id)}" aria-label="关闭标签：${esc(tab.title || '未命名网页')}">${icon('close')}</button></div>`).join('');
+    tabs.innerHTML = accountTabs.map(tab => `<div class="tab ${tab.id === active?.id ? 'active' : ''}"><button class="tab-select" data-action="activate-tab" data-id="${esc(tab.id)}" ${tab.id === active?.id ? 'aria-current="page"' : ''} title="${esc(tabLabel(tab))}">${tab.purpose === 'authentication' ? icon('shield') : icon('globe')}<span>${esc(tabLabel(tab))}</span></button><button class="icon-button" data-action="close-tab" data-id="${esc(tab.id)}" aria-label="关闭标签：${esc(tabLabel(tab))}">${icon('close')}</button></div>`).join('');
+    const notice = accountRequestNotice(snapshot, selectedAccountId);
+    if (accountNotice.innerHTML !== notice) accountNotice.innerHTML = notice;
+    accountNotice.hidden = !notice;
     if (lastAddressTab !== (active?.id ?? null) || document.activeElement !== address) {
       address.value = active?.displayUrl ?? '';
     }
@@ -123,7 +129,7 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
     find('.load-status').textContent = active ? ({ loading: '加载中', ready: '页面就绪', error: '加载失败' })[active.loadState] : '无网页';
     placeholder.hidden = !!active && snapshot?.activeAccountId === selectedAccountId;
     if (!placeholder.hidden) {
-      placeholder.innerHTML = `${emptyState(accountTabs.length ? '选择一个标签继续' : '这里还没有网页标签', accountTabs.length ? '点击上方标签切换；网页由原生运行时呈现。' : '最后一个标签已关闭时保持空态。新建标签不会更改账号资料。')}<div class="slot-actions"><button class="primary" data-action="open-muse" ${ready ? '' : 'disabled'}>${icon('plus')}打开 Muse</button><button class="secondary" data-action="test-parent" ${ready ? '' : 'disabled'}>测试父页 :4317</button><button class="secondary" data-action="test-auth" ${ready ? '' : 'disabled'}>认证端 :4318</button></div><p class="test-site-note">合成站点需先在项目根目录启动 <code>npm --prefix app run test:sites:start</code><br>仅通过原生 HTTP 导航打开，不授予本地文件或系统权限。这里不模拟 Muse 网页。</p>`;
+      placeholder.innerHTML = browserEmptyState(accountTabs.length > 0, ready);
     }
   }
 

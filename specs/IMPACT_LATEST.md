@@ -1,42 +1,39 @@
 ---
 type: impact-assessment
-context: M0 controlled child authentication evaluation; no production patch authorized
+context: Parallel frontend/backend flow-state corrections and isolated Tauri connector-tab verification; no production runtime patch applied
 ---
 
-# M0 受控认证评估影响范围
-
-**当前处置（2026-11-23）：此为历史新窗口能力评估，不是普通Muse登录的前置。** 用户澄清及官方初始页核对后，已暂停底层补丁研究；下一步优先原网页登录、账号隔离与会话恢复。以[当前登录基线](verifications/MUSE-LOGIN-BASELINE.md)和[更新后的计划](EXECUTION_PLAN.md)为准，以下保留原评估范围。
+# Muse 原页登录与连接器授权：当前改动影响
 
 ## Target
 
-用户已批准受控评估，未批准应用。调查 Wry 0.55.1 原生 child 新窗口接管及网页关闭 handler 的最小扩展；实验仅在 scratch，正式工程依赖、锁文件、权限和 `window.open` Deny 保持不变。
+用户再次明确：普通登录留在原标签；连接应用时在新标签授权，完成后该标签自动关闭，Muse原页显示连接成功。本轮并行开发生产前后端状态与诊断，另在scratch做Tauri连接器标签实验；不将未验证依赖补丁应用生产。
 
 ## Dependents
 
-若以后集成，将影响：
-- `app/src-tauri/src/browser/views.rs`：来源环境继承、新窗口接管与原生事件。
-- `app/src-tauri/src/browser/actions.rs`、`registry.rs`：账号/tab归属、关闭和迟到事件。
-- `app/src-tauri/src/browser/mod.rs`：操作序列化与布局。
-- `app/contracts/workspace.ts`、`app/src/bridge/`、`app/src/shell/`：快照、选中标签和布局。
-- Tauri / tauri-runtime / tauri-runtime-wry / Wry：如采用补丁，需固定来源和校验，不能仅替换一个回调就视为集成完成。
+- `app/src-tauri/src/browser/registry.rs`、`views.rs`：启动验证状态、按发起账号/标签拒绝新窗口的诊断。生产仍Deny，未放宽权限。
+- `app/src/features/`、`shell/`：原页登录说明、账号内授权/外链请求反馈；不合成原生标签或connected状态。
+- `app/tests/sites/`、`tests/e2e/native-probe.cjs`：回调成功与仅关闭分离；A发起/B活跃时归属校验。
+- `WorkspaceSnapshot`现有字段与IPC契约保持不变；不新增依赖。
+- 独立scratch Tauri/Wry副本：精确child、来源environment、原生关闭和接管结果；结果不能直接等同正式应用支持。
 
 ## Affected Stories
 
-项目使用 `specs/EXECUTION_PLAN.md`，没有 release-plan/story capsule。直接关联 M0 技术闸门；后续 M2 标签、M4 休眠保护、M5 删除与迟到事件均受认证生命周期约束，仍暂停。
+按已批准执行计划属于M0现有基线修正及连接器原生验证，关联M2来源标签语义。没有创建新story目录，不宣称M1—M6完成。原页真实登录/重建/重启恢复仍待用户人工验收。
 
 ## Test Coverage
 
-- 现有原生探测覆盖 A/B 合成资料隔离、同账号共享、远程管理拒绝、最后标签空态以及显式认证阻止。
-- 双来源站点已有实际 `WindowProxy`、来源与 source 校验、嵌套、自关闭夹具。
-- 缺口：成功同窗接管、原生关闭通知清理、about:blank、来源先关闭、嵌套、错误路径和真实跨站HTTPS认证。
-- 本次底层实验不替代 Tauri 权限测试、账号隔离矩阵或真实 Muse 手动验收。
+- Rust：启动不假报全局登录失败、来源账号在后台时的归属、关闭/错误来源迟到事件、状态不复活。
+- TS：说明文案/账号通知选择、无事件/其他账号/空态、渲染逃逸；旧revision保持现有acceptSnapshot规则。
+- 合成与原生：A/B存储隔离、同账号共享、远程IPC拒绝、最后标签空态；合法回调才报告合成成功。
+- 缺口：真实连接器服务端成功、真实Muse/两步验证、HTTPS跨站/COOP、持久化真实会话。
 
-## Risk: High
+## Risk: Medium / High
 
-认证与视图生命周期属于共享原生边界；潜在补丁跨多层运行时，当前缺少成功路径集成测试。风险仅在隔离实验中评估，不应用于正式工程。
+生产修正保持既有Deny与契约，风险为状态/来源通知回归；需单测、类型/构建与原生验证。隔离runtime实验风险高，禁止把编译通过或关页事件当作授权成功；不得复制URL、自有unsafe、系统浏览器或独立授权窗口降级。
 
 ## Recommended action
 
-先验证已有 Wry child 接管能力及最小 Windows 关闭 handler 扩展；记录成功、失败与未测项，报告后由用户决定是否批准下一轮 Tauri 层实验或正式集成。不得新增应用自有 unsafe，不复制认证 URL 冒充关联，不改为独立弹窗或系统浏览器。
+三个互不重叠写入泳道：前端features/shell，后端registry/views，原生代理仅scratch。主代理负责契约、合成探测、配置/文档和Git。一次收敛后做相关验证，按实际结果报告生产能力与实验能力差异。
 
-评估结果：[隔离实验报告](archive/spikes/SPIKE-m0-child-auth.md)。Wry底层最终矩阵8/8通过，但曾有未定位原生创建失败；Tauri层未实现，不批准直接集成。
+历史底层评估保留在[spike报告](archive/spikes/SPIKE-m0-child-auth.md)，原页基线见[网页登录说明](verifications/MUSE-LOGIN-BASELINE.md)。

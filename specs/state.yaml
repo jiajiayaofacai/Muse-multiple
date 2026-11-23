@@ -1,20 +1,21 @@
 project: Muse-multiple
-phase: verify-inline-login-baseline
+phase: integrated-login-and-connector-flow-boundaries
 active_milestone: M0
 plan_approval: approved-by-user
 branch: feat/m0-desktop
 native_gate: pending-real-inline-login-isolation-and-recovery
 real_muse_authentication: not-tested
 parallel_lanes:
-  browser_runtime: integrated
-  typescript_shell: integrated
-  synthetic_sites: integrated
+  browser_runtime: source-scoped-diagnostics-verified
+  typescript_shell: account-notices-and-flow-descriptions-verified
+  synthetic_sites: callback-versus-close-probes-verified
 verification:
-  typescript_tests: 34-passed
-  synthetic_http_tests: 7-passed
-  rust_unit_tests: 9-passed
-  native_mechanism_checks: 6-passed
-  native_shell_reload: passed
+  typescript_tests: 48-passed
+  synthetic_http_tests: 8-passed
+  rust_unit_tests: 15-passed
+  native_mechanism_checks: 8-passed
+  native_shell_reload: previously-passed-not-rerun-this-round
+  browser_connector_scenarios: three-passed-four-node-results-including-parent
 notes:
   - Native mechanism checks use synthetic data in a dedicated scratch profile.
   - window.open is explicitly denied until safe same-window authentication handling is proven.
@@ -33,9 +34,9 @@ controlled_evaluation:
   official_upgrade: no-complete-interface-found
   wry_scratch_spike: final-eight-checks-passed
   stability: earlier-hresult-0x80070057-unresolved
-  tauri_integration: not-implemented
+  tauri_integration: isolated-two-native-rounds-passed-not-in-production
   production_dependencies: unchanged
-  disposition: paused-not-applied-following-product-flow-correction
+  disposition: isolated-connector-evaluation-resumed-no-production-patch
 login_baseline:
   report: specs/verifications/MUSE-LOGIN-BASELINE.md
   official_entry: https://muse.ai/
@@ -43,4 +44,14 @@ login_baseline:
   user_reported: inline-code-then-optional-inline-two-step-code-then-chat
   full_flow_agent_verified: false
   next_action: verify-original-account-page-login-and-session-recovery-with-user-entered-credentials
-  scope_this_turn: research-and-documentation-only
+  scope_this_turn: parallel-flow-state-implementation-and-isolated-connector-verification
+connector_flow:
+  user_reported: connect-app-opens-authorization-tab-then-auto-closes-and-muse-reports-result
+  production_new_windows: denied-with-source-scoped-diagnostic
+  production_callback_and_auto_close: not-implemented
+  real_service_connection: not-tested
+  success_rule: native-close-or-page-ready-is-not-connection-success
+  dependency_patch: scratch-only-not-applied
+  isolated_tauri_matrix: two-clean-profile-rounds-eight-checks-each-passed
+  isolated_report: specs/archive/spikes/SPIKE-tauri-connector.md
+  remaining_runtime_gap: failure-injection-and-early-deferral-or-queue-error-recovery

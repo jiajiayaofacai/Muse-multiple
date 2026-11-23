@@ -91,10 +91,11 @@
       const url = new URL('/popup', origins.popup);
       url.search = new URLSearchParams({ request: id, account: selected, opener: role }).toString();
       // Synchronous user click, no noopener: opener identity is the subject of this fixture.
+      state('connection-status', 'pending');
       let win;
       try { win = window.open(url.href, '_blank', 'popup,width=640,height=760'); }
-      catch { state('message-status', 'open-error'); return; }
-      if (!win) { state('message-status', 'blocked-or-unassociated'); return; }
+      catch { state('message-status', 'open-error'); state('connection-status', 'not-connected'); return; }
+      if (!win) { state('message-status', 'blocked-or-unassociated'); state('connection-status', 'not-connected'); return; }
       const row = document.createElement('li');
       row.dataset.testid = 'popup-record';
       row.dataset.requestId = id;
@@ -121,6 +122,7 @@
       renderChild(child);
       el('message-origin').textContent = event.origin;
       state('message-status', 'success', `success; source=matched; synthetic account=${child.account}`);
+      state('connection-status', 'connected-synthetic');
     });
 
     let callback;

@@ -1,4 +1,4 @@
-import type { WorkspaceSnapshot } from '../../contracts/workspace';
+import type { DiagnosticDto, WorkspaceSnapshot } from '../../contracts/workspace';
 
 type InputResult = { ok: true; value: string } | { ok: false; message: string };
 
@@ -23,6 +23,14 @@ export function navigationUrl(input: string): InputResult {
 
 export function acceptSnapshot(current: WorkspaceSnapshot | null, incoming: WorkspaceSnapshot): WorkspaceSnapshot {
   return !current || incoming.revision > current.revision ? incoming : current;
+}
+
+export function accountNewWindowDiagnostic(snapshot: WorkspaceSnapshot | null, accountId: string | null): DiagnosticDto | null {
+  if (!snapshot || !accountId || !snapshot.accounts.some(account => account.id === accountId)) return null;
+  // Diagnostics outlive source tabs; their accountId is the only ownership signal.
+  return snapshot.diagnostics.reduce<DiagnosticDto | null>((latest, item) =>
+    item.accountId === accountId && item.code === 'new_window_blocked' && (!latest || item.id > latest.id)
+      ? item : latest, null);
 }
 
 export function workspaceCounts(snapshot: WorkspaceSnapshot | null) {

@@ -2,9 +2,11 @@
 
 ## 当前结论
 
-**当前优先验收：普通原页登录、账号隔离与会话恢复；未通过不等于依赖popup补丁。** 2026-11-23按用户澄清及官方初始页核对，电话/邮箱→验证码→可选两步验证以原账号现有网页为基线。完整流程尚未由代理实测；详见[网页登录基线](../../../../specs/verifications/MUSE-LOGIN-BASELINE.md)。此前“先做popup接管才能验证普通登录”的前提撤回，底层补丁研究暂停，不宣称M0已通过。
+**两条流程分别验收：普通登录留在原页；连接其他应用使用来源账号的新授权标签。** 普通登录的验证码/两步验证以用户说明为基线，真实会话仍未实测；连接器完成后应自动关授权标签并由Muse原页报告结果，不能仅从关闭推断成功。
 
-生产代码未改变：普通原生同窗标签已做合成存储隔离探测，真实Muse登录/恢复待验收；所有 `window.open` / target=_blank 仍返回 `NewWindowResponse::Deny`。该限制单列为新窗口能力缺口，不能再直接等同普通登录不可用。程序内旧gateStatus文案也未在这次文档更正中修改，不能将其视为新发现的登录故障。
+本轮生产代码已修正启动诊断：`login_verification_pending`，不再把普通登录全局标为BLOCKED。`record_new_window_blocked`只接受仍有效的来源账号/标签，即使B当前活跃也归实际发起的A；只增诊断/revision，不改sessionStatus、active账号或全局gateStatus。前端以账号归属展示历史受限请求；页面ready或标签消失均不标连接成功。
+
+生产 `window.open` / target=_blank 仍 `NewWindowResponse::Deny`，没有应用依赖补丁。精确child接管、原生自关闭与结果回报由独立Tauri副本实验验证，不能直接算生产支持。最新完整结果见[M0记录](../../../../specs/verifications/M0-RESULTS.md)，普通登录来源见[基线](../../../../specs/verifications/MUSE-LOGIN-BASELINE.md)。
 
 ## 历史：新窗口能力限制与隔离实验（不是普通登录前提）
 

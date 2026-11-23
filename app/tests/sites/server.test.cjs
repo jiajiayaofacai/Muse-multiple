@@ -144,3 +144,17 @@ test('port configuration rejects invalid input and identical nonzero origins', a
     await assert.rejects(createTestServers({ ports }), /port/i);
   }
 });
+
+test('connector probe starts disconnected and only marks matched callback as synthetic connection', async (t) => {
+  const sites = await fixture(t);
+  for (const role of ['parent', 'popup']) {
+    const response = await request(`${sites.origins[role]}/${role}`);
+    assert.match(response.body, /data-testid="connection-status" data-state="not-connected"/);
+    assert.match(response.body, /不是普通登录/);
+  }
+  const script = await request(`${sites.origins.parent}/fixture.js`);
+  assert.match(script.body, /state\('connection-status', 'pending'\)/);
+  assert.match(script.body, /state\('connection-status', 'connected-synthetic'\)/);
+  assert.ok(script.body.indexOf("state('connection-status', 'connected-synthetic')") > script.body.indexOf('event.source !== child.win'));
+  // HTTP/source checks only; native callback and close semantics require a separate driver.
+});
