@@ -11,6 +11,10 @@
 **/coverage/
 **/test-results/
 **/playwright-report/
+/app/src-tauri/gen/
+/app/src-tauri/icons/generated/*
+!/app/src-tauri/icons/generated/icon.png
+!/app/src-tauri/icons/generated/icon.ico
 
 # 本机配置、测试浏览资料和凭据
 .env

@@ -1,0 +1,21 @@
+project: Muse-multiple
+phase: execute-blocked
+active_milestone: M0
+plan_approval: approved-by-user
+branch: feat/m0-desktop
+native_gate: blocked-same-window-authentication
+real_muse_authentication: not-tested
+parallel_lanes:
+  browser_runtime: integrated
+  typescript_shell: integrated
+  synthetic_sites: integrated
+verification:
+  typescript_tests: 34-passed
+  synthetic_http_tests: 7-passed
+  rust_unit_tests: 9-passed
+  native_mechanism_checks: 6-passed
+  native_shell_reload: passed
+notes:
+  - Native mechanism checks use synthetic data in a dedicated scratch profile.
+  - window.open is explicitly denied until safe same-window authentication handling is proven.
+  - M1-M6 remain gated; no real Muse login or session persistence claim.

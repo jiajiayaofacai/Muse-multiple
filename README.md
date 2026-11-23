@@ -2,14 +2,15 @@
 
 使用 **Rust + Tauri + TypeScript** 开发的 Muse for Meta（muse.ai）多账号图形化工作台项目。
 
-**当前阶段：交互原型完成，正式应用执行计划待批准。** 尚未实现真实 Muse 登录、原生 WebView、多账号浏览资料隔离或系统托盘，不能据此承诺免重复登录。
+**当前阶段：计划已批准，正在进行 M0 原生工程与技术闸门验证。** 已创建 `app/`，但同窗认证尚未通过，不能据此承诺免重复登录或完整产品可用。
 
 ## 项目入口
 
-- [执行计划（待批准）](specs/EXECUTION_PLAN.md)：开发顺序、并行子代理职责、技术闸门与验收条件。
+- [已批准执行计划](specs/EXECUTION_PLAN.md)：开发顺序、并行子代理职责、技术闸门与验收条件。
 - [项目级开发约定](AGENTS.md)：参考项目分工、Rust/Tauri 规范、会话安全和 Git 同步规则。
 - [原型入口](prototype/index.html) / [体验说明](prototype/README.md)：直接用浏览器打开；无需安装依赖。
 - [技术对比报告](Muse-多账号工作台技术对比报告.md)：基于本地参考源码的分析，链接中的参考源码不随新仓库发布。
+- [M0 正式工程](app/README.md)：原生运行、合成测试站及当前限制。
 
 ## 已确认方向
 
@@ -29,7 +30,7 @@ node --check .\prototype\app.js
 node .\prototype\state.test.cjs
 ```
 
-这些只验证模拟原型。正式应用尚无 `package.json` 或 Rust crate，不能当作已完成正式构建或原生验收。
+这些只验证模拟原型。正式应用的构建、测试及运行方法见 [app/README.md](app/README.md)，实际结果见 [M0验证记录](specs/verifications/M0-RESULTS.md)；普通浏览器壳测试不等于原生登录验收。
 
 ## 版本管理
 

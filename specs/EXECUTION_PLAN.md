@@ -1,12 +1,12 @@
 ---
 type: execution-plan
-status: awaiting-user-approval
-context: Muse-multiple Windows-first desktop application; approved interactive prototype; no native application yet
+status: approved-m0-authentication-gate-blocked
+context: Muse-multiple Windows-first application; M0 native baseline built; same-window authentication gate blocked
 ---
 
 # Muse-multiple 正式应用执行计划
 
-状态：**待用户批准，尚未开始正式应用开发**。
+状态：**用户已批准；M0可构建基线及合成原生隔离机制检查已完成，同窗认证闸门仍阻塞**。M1—M6暂不推进；实际结果见 [M0验证记录](verifications/M0-RESULTS.md)。
 
 ## 1. 目标与完成定义
 
@@ -79,7 +79,7 @@ M0必须用本地双来源站点验证同窗呈现、来源关联、回调、关
 
 ## 5. 执行顺序与逐步验收
 
-所有阶段当前均为待执行。批准本计划后开始M0；技术闸门失败时必须暂停并重新确认路线。
+用户已批准本计划。M0 开始执行，M1—M6待技术闸门通过后推进；技术闸门失败时必须暂停并重新确认路线。
 
 | 阶段 | 依赖/风险 | 实施与交付 | 验收方式 |
 | --- | --- | --- | --- |
@@ -164,6 +164,6 @@ Pop-Location
 
 ## 10. 当前审批点
 
-本轮只完成原型中文化、Git/GitHub初始化及执行计划，不创建正式应用。计划批准后按M0启动多个有独立目录的子代理。
+用户已明确批准本计划并要求开始开发。按 M0 启动多个独立目录子代理，先交付原生可运行验证版及证据，不将浏览器壳测试冒充原生验收。
 
-请重点确认：Windows优先；原生TS/Vite；同窗认证是必须验证的硬闸门；休眠后重新加载Muse且不持久化认证/文章标签URL；按上面泳道并行、每轮验证后提交推送。若技术闸门不能通过，停止并请求变更批准。
+Windows优先、原生TS/Vite、同窗认证技术闸门、休眠不持久化认证/文章URL、按泳道并行和每轮提交推送作为已批准基线。若技术闸门不能通过，停止并请求变更批准。

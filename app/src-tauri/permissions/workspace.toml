@@ -1,0 +1,19 @@
+[[permission]]
+identifier = "allow-workspace-snapshot"
+description = "Read workspace state from the local shell"
+commands.allow = ["workspace_snapshot"]
+
+[[permission]]
+identifier = "allow-workspace-action"
+description = "Manage workspace state from the local shell"
+commands.allow = ["workspace_action"]
+
+[[permission]]
+identifier = "allow-workspace-layout"
+description = "Set native view bounds from the local shell"
+commands.allow = ["workspace_layout"]
+
+[[permission]]
+identifier = "allow-workspace-layout-begin"
+description = "Hide old views and start a shell layout session"
+commands.allow = ["workspace_layout_begin"]
