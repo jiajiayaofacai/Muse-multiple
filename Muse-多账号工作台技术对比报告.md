@@ -12,11 +12,13 @@
 
 本报告依据三个本地项目的 CodeGraph 索引、关键源码和官方 API 文档。Muse 最新的登录链路、服务端会话寿命和 Windows 安装包行为尚未使用真实账号验证。目标平台未指定，以下将当前 Windows 环境作为首个验证平台。
 
+2026-11-23登录流程更正：用户明确普通登录的电话/邮箱、验证码和可选两步验证都在原网页完成。本轮已搜索Meta官方资料并查看初始登录页；完整流程未由代理实测，证据见[网页登录基线](specs/verifications/MUSE-LOGIN-BASELINE.md)。不得把参考项目支持popup推断成Muse普通登录依赖popup；当前暂停底层补丁研究，优先原页登录与资料隔离/恢复验收。
+
 ## Muse Panel：每个账号拥有自己的浏览资料
 
 **桌面版。** 添加账号时创建本地账号 ID，用户在新列中亲自登录。账号的显示名、分组、排序等保存在 `config.json`。WebView 用 `persist:muse-<id>` 绑定自己的 Electron Session，站点数据由 Chromium 落盘。分组切换和排序使用稳定的组件实例和 CSS 顺序。账号仍在内存里时，切回来通常保留原页面和表单状态。手动休眠或达到分组自动休眠条件后，WebView 被卸载。重新打开使用相同 partition，页面重新加载，持久化且仍有效的登录数据可继续使用。应用和电脑重启属于同一类冷恢复，但进程内状态、未保存表单等不能靠 partition 保证恢复。删除分组会迁移其中的账号，删除账号则会请求清除该账号的浏览数据。 [添加、删除与休眠逻辑](X:/python-code/Muse-multiple/muse-panel-main/muse-panel-main/src/renderer/src/App.tsx:165) · [WebView 创建](X:/python-code/Muse-multiple/muse-panel-main/muse-panel-main/src/renderer/src/components/AccountColumn.tsx:116) · [Electron Session](https://www.electronjs.org/docs/latest/api/session#sessionfrompartitionpartition-options)
 
-**登录弹窗。** Electron 主进程允许代码中列出的 Muse 与 Meta 相关站点打开弹窗，并让它们沿用来源账号的 partition。其他弹窗交给系统浏览器处理。工作台移植时，首先验证真实认证弹窗的 Cookie、回调和 `opener` 行为都归属于发起登录的账号。认证弹窗误开到默认资料时，可能出现登录完成后原页面仍提示登录，或弹窗选中了另一个账号。 [弹窗规则](X:/python-code/Muse-multiple/muse-panel-main/muse-panel-main/src/main/index.ts:66) · [账号清除处理](X:/python-code/Muse-multiple/muse-panel-main/muse-panel-main/src/main/index.ts:153)
+**参考项目的新窗口支持。** Electron主进程允许代码列出的Muse与Meta相关站点沿用来源账号partition打开弹窗，其他弹窗交系统浏览器。这是参考源码行为，不证明Muse当前普通登录会弹窗，也不代表本工作台应采用相同外链策略。仅在真实出现连接器认证或其他新窗口时，验证Cookie、回调与opener均归发起账号；普通登录按原网页流程验证。 [弹窗规则](X:/python-code/Muse-multiple/muse-panel-main/muse-panel-main/src/main/index.ts:66) · [账号清除处理](X:/python-code/Muse-multiple/muse-panel-main/muse-panel-main/src/main/index.ts:153)
 
 **iOS 版。** 每个账号 UUID 对应一个 `WKWebsiteDataStore(forIdentifier:)`。账号切换复用仍在池中的 WKWebView。自动保留上限为 2 个（含当前页），手动常驻项有独立策略。挂起、内存回收或超出缓存时，可以卸载页面并在原数据存储中重建。冷切换使用截图过渡，截图只改善显示。源码用 Cookie 是否存在及页面回报标记账号是否登录过，这个标记无法证明服务器此刻仍接受会话。添加后未登录即切出的草稿还可能被自动丢弃。删除账号会释放视图并尝试删除对应数据存储。 [视图复用与回收](X:/python-code/Muse-multiple/muse-panel-main/muse-panel-main/ios/MusePanel/WebViewPool.swift:43) · [独立数据存储](X:/python-code/Muse-multiple/muse-panel-main/muse-panel-main/ios/MusePanel/WebViewPool.swift:121) · [切换、挂起、删除](X:/python-code/Muse-multiple/muse-panel-main/muse-panel-main/ios/MusePanel/AppModel.swift:68) · [登录过的状态标记](X:/python-code/Muse-multiple/muse-panel-main/muse-panel-main/ios/MusePanel/AccountStore.swift:95)
 
@@ -47,7 +49,7 @@
 
 | 优先级 | 场景 | 通过标准 |
 | --- | --- | --- |
-| P0 | 两个测试账号分别完成首次登录，包括真实重定向和弹窗 | A、B 各自显示正确账号。B 的登录完成后 A 仍可用。弹窗回到发起登录的账号 |
+| P0 | 两个测试账号分别在自己的Muse原网页完成电话/邮箱、验证码及适用两步验证 | A、B各自进入对话，B完成后A仍可用；不因验证步骤重建视图。若另遇真实新窗口，再单列来源关联场景，不预设普通登录必有弹窗 |
 | P0 | A → B → A，先顺序切换，再测试并行加载 | 每次都显示正确身份。热切换不重载，仍有效的会话不再要求验证码。不存在短暂显示另一账号内容的情况 |
 | P0 | 关闭一个 WebView 后重建，退出工作台并重新打开，重启系统，再从旧安装包升级 | 分别记录是否重载、是否仍登录和实际账号身份。能区分仅内存里的页面状态、浏览资料中的持久化状态和系统重启后的实际结果 |
 | P0 | 在 A 中显式退出并另测在应用内移除 A，再添加 A | B 仍正常，A 的账号元数据与浏览资料按对应操作预期处理。退出 A 应引导正常重登，移除后重新添加 A 应视为新资料。若服务端存在联动撤销，记录实际影响 |

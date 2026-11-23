@@ -6,6 +6,8 @@ status: partially-answered-not-ready-for-integration
 
 # Spike: M0 同宿主 child 认证与原生关闭
 
+**后续更正（2026-11-23）：本报告只记录通用新窗口实验，不能证明Muse普通登录依赖popup。** 用户已说明电话/邮箱、验证码及可选两步验证都在原网页；本代理核对了官方初始页，完整流程未实测。底层补丁研究暂停，以[当前登录基线](../../verifications/MUSE-LOGIN-BASELINE.md)为准；下文原实验结果与失败记录保留。
+
 ## Question
 
 能否用 Wry 已有的真实新窗口接管机制，直接创建同一宿主的 child 并继承来源环境，通过最小安全关闭回调扩展完成单标签清理，避开隐藏窗口及延迟 reparent？

@@ -5,6 +5,8 @@ context: M0 controlled child authentication evaluation; no production patch auth
 
 # M0 受控认证评估影响范围
 
+**当前处置（2026-11-23）：此为历史新窗口能力评估，不是普通Muse登录的前置。** 用户澄清及官方初始页核对后，已暂停底层补丁研究；下一步优先原网页登录、账号隔离与会话恢复。以[当前登录基线](verifications/MUSE-LOGIN-BASELINE.md)和[更新后的计划](EXECUTION_PLAN.md)为准，以下保留原评估范围。
+
 ## Target
 
 用户已批准受控评估，未批准应用。调查 Wry 0.55.1 原生 child 新窗口接管及网页关闭 handler 的最小扩展；实验仅在 scratch，正式工程依赖、锁文件、权限和 `window.open` Deny 保持不变。
