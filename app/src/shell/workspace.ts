@@ -3,7 +3,7 @@ import { NativeBridge, safeError } from '../bridge/native';
 import { NativeLayout } from '../bridge/layout';
 import { accountName, acceptSnapshot, navigationUrl, sessionLabels } from '../features/workspace-state';
 import { dashboardPage, homePage, settingsPage } from '../features/pages';
-import { accountRequestNotice, browserEmptyState, tabLabel } from '../features/browser-content';
+import { accountRequestNotice, accountTabStrip, browserEmptyState } from '../features/browser-content';
 import { escapeHtml as esc, icon } from '../ui/markup';
 import './workspace.css';
 
@@ -111,7 +111,7 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
   function renderBrowser(): void {
     const accountTabs = snapshot?.tabs.filter(tab => tab.accountId === selectedAccountId) ?? [];
     const active = currentTab();
-    tabs.innerHTML = accountTabs.map(tab => `<div class="tab ${tab.id === active?.id ? 'active' : ''}"><button class="tab-select" data-action="activate-tab" data-id="${esc(tab.id)}" ${tab.id === active?.id ? 'aria-current="page"' : ''} title="${esc(tabLabel(tab))}">${tab.purpose === 'authentication' ? icon('shield') : icon('globe')}<span>${esc(tabLabel(tab))}</span></button><button class="icon-button" data-action="close-tab" data-id="${esc(tab.id)}" aria-label="关闭标签：${esc(tabLabel(tab))}">${icon('close')}</button></div>`).join('');
+    tabs.innerHTML = accountTabStrip(snapshot, selectedAccountId);
     const notice = accountRequestNotice(snapshot, selectedAccountId);
     if (accountNotice.innerHTML !== notice) accountNotice.innerHTML = notice;
     accountNotice.hidden = !notice;

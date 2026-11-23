@@ -1,0 +1,2 @@
+# Preserve upstream/patch bytes so SHA256SUMS survives Windows checkouts.
+* -text

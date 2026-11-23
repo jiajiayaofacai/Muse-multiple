@@ -1,4 +1,4 @@
-//! Windows-first M0 browser verification. Authentication remains explicitly blocked.
+//! Windows-first M0 browser verification. Real authentication remains unverified.
 mod actions;
 mod logic;
 mod model;

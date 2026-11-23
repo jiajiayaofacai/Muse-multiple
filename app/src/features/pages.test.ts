@@ -18,7 +18,11 @@ describe('登录与外部授权基线文案', () => {
     expect(html).toContain('连接第三方应用');
     expect(html).toContain('新标签');
     expect(html).toContain('普通外链');
-    expect(html).toContain('当前仍受限');
+    expect(html).toContain('来源账号内的新标签');
+    expect(html).toContain('可能自动关闭');
+    expect(html).toContain('结果以 Muse 原页为准');
+    expect(html).toContain('普通外链也在来源账号内打开标签');
+    expect(html).not.toMatch(/当前仍受限|尚不支持|一律阻止|预期自动关闭/);
     expect(html).not.toContain('同窗认证');
   });
 
@@ -29,6 +33,11 @@ describe('登录与外部授权基线文案', () => {
     expect(html).toContain('外部授权');
     expect(html).toContain('不以弹窗能力为前置条件');
     expect(html).toContain('不代表连接成功');
+    expect(html).toContain('来源账号内的新标签');
+    expect(html).toContain('可能自动关闭');
+    expect(html).toContain('结果以 Muse 原页为准');
+    expect(html).toContain('普通外链也在来源账号内打开标签');
+    expect(html).not.toMatch(/当前仍受限|尚不支持|一律阻止|预期自动关闭/);
     expect(html).not.toContain('包含正常页和认证页');
   });
 

@@ -6,7 +6,7 @@
 
 本轮生产代码已修正启动诊断：`login_verification_pending`，不再把普通登录全局标为BLOCKED。`record_new_window_blocked`只接受仍有效的来源账号/标签，即使B当前活跃也归实际发起的A；只增诊断/revision，不改sessionStatus、active账号或全局gateStatus。前端以账号归属展示历史受限请求；页面ready或标签消失均不标连接成功。
 
-生产 `window.open` / target=_blank 仍 `NewWindowResponse::Deny`，没有应用依赖补丁。精确child接管、原生自关闭与结果回报由独立Tauri副本实验验证，不能直接算生产支持。最新完整结果见[M0记录](../../../../specs/verifications/M0-RESULTS.md)，普通登录来源见[基线](../../../../specs/verifications/MUSE-LOGIN-BASELINE.md)。
+生产Windows新窗口已通过固定四层依赖补丁接入真实child、来源environment、原生自关闭与脱敏结果回报；合成正式原生15项通过，不等于真实授权成功。见[正式接入报告](../../../../specs/verifications/CONNECTOR-PRODUCTION-RESULTS.md)与[vendor维护说明](../../vendor/README.md)。下文Deny/未应用的叙述是各历史阶段记录，不再代表当前代码；M0真实登录/恢复闸门仍未通过。
 
 ## 历史：新窗口能力限制与隔离实验（不是普通登录前提）
 
@@ -105,3 +105,7 @@ loadState 只在真实 PageLoadEvent 更新（Started/Finished）；Finished 不
 用户随后批准只评估、不应用的受控实验。官方最新稳定与已核查开发分支未发现完整接口组合。scratch内Wry直接child接管＋最小原生关闭hook的最终合成矩阵8/8通过，但曾出现未定位的 `0x80070057` 创建失败，Tauri层适配和接管失败回报仍未实现。
 
 详见[隔离评估报告](../../../../specs/archive/spikes/SPIKE-m0-child-auth.md)。该证据只证明底层路线值得继续实验，**不解除本模块M0闸门**。本轮没有应用依赖补丁或改变生产Deny行为；下一步由用户决定是否开展固定版本Tauri副本实验。
+
+## 正式接入更新（2026-11-23）
+
+用户在隔离成功/故障验证后明确批准正式接入，已实施精确window_id+UUID标签的CreateWebview、真实来源environment和排队关闭/完成回调。普通popup不猜认证，均为normal；仅接管完成或关闭不改变unknown会话。错误/关闭来源不复活、不串号；原生操作前释放registry锁。新增pending/closing生命周期及11项测试，正式Rust26项通过；父代理完成fmt/Clippy/test/build与新资料原生15项，详细边界见上方正式报告。此前8类故障仅在隔离副本注入，不冒称正式重跑。远程能力配置和IPC来源guard不变，自有代码继续禁止unsafe。

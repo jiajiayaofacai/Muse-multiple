@@ -7,7 +7,7 @@
 
 2026-11-23用户明确普通登录的验证码与可选两步验证都在原网页完成。本轮搜索Meta官方资料，并实际打开Muse未登录页面，确认电话/邮箱表单和“继续”；未发送验证码、未登录。完整证据分层见[网页登录基线](MUSE-LOGIN-BASELINE.md)。
 
-此前把popup接管作为普通登录前置的判断已撤回。用户随后明确了另一条连接器流程：连接应用时开新授权标签，完成自动关闭，Muse原页显示结果。现按两条流程分别推进，生产前后端状态已修正，原生接管只在独立副本验证；真实登录/连接结果仍未验收，不宣称M0通过。
+此前把popup接管作为普通登录前置的判断已撤回。用户随后明确连接器新授权标签流程，并在隔离验证后批准正式接入；现已接入真实child、原生自关闭及回调，正式合成15项通过。真实登录/连接结果仍未验收，不宣称M0通过。最新证据见[正式接入报告](CONNECTOR-PRODUCTION-RESULTS.md)；下方历史段落按阶段保留。
 
 ## 自动检查
 
@@ -16,15 +16,15 @@
 | `npm --prefix app run typecheck` | PASS |
 | `npm --prefix app run lint` | PASS |
 | `npm --prefix app run build` | PASS |
-| `npm --prefix app run test` | PASS：48/48 TypeScript测试，含来源账号通知、转义、原页登录/外部授权说明 |
+| `npm --prefix app run test` | PASS：53/53 TypeScript测试，含来源账号标签/通知、转义、不猜认证用途 |
 | `npm --prefix app run test:sites` | PASS：8/8 合成HTTP站点测试 |
 | `npm --prefix app run test:connectors` | PASS：3个普通Edge交互场景（Node统计含父项4/4）；不是原生或真实连接器认证 |
 | `cargo fmt --check` | PASS |
 | `cargo clippy --locked --all-targets -- -D warnings` | PASS；MSVC 只报告 linker stdout warning |
-| `cargo test --locked` | PASS：15/15 Rust单元测试，含来源账号、关闭/无效来源和诊断限量 |
+| `cargo test --locked` | PASS：26/26 Rust单元测试，含pending/closing、来源消失/嵌套/迟到回调/错误账号清理 |
 | `cargo build --locked` | PASS；MSVC 只报告 linker stdout warning |
 | 原生逻辑独立 rustc 测试 | PASS：4/4，子代理阶段 |
-| 专用 WebView2 原生探测 | PASS：8项生产机制检查；普通登录待验收，新窗口请求明确受限且不改变全局登录状态 |
+| 专用 WebView2 原生探测 | PASS：最终正式15项，真实child/opener、跨来源回调、自关闭、A/B归属、文章/拒绝/空态；真实认证另验 |
 | 原生壳页面重载 | 先前记录PASS；本轮未重跑，不以其他检查替代 |
 
 Rust 2.12.7 依赖在本机缓存不足且 crates.io 解析长时间等待；M0 使用本机可复现的 Tauri 2.11.5/tauri-build 2.6.3，不能把结果直接宣称为 2.12.7 结果。
@@ -39,9 +39,9 @@ Rust 2.12.7 依赖在本机缓存不足且 crates.io 解析长时间等待；M0 
 
 ## 当前生产能力边界
 
-**普通登录待真实验收；连接器授权新标签未在生产接入。** 生产继续Deny新窗口，按有效来源账号/标签记录固定脱敏 `new_window_blocked`；启动为 `login_verification_pending`。拒绝一次新窗口请求不会修改全局登录状态、当前活跃账号或假报连接成功。
+**普通登录与真实连接器成功仍待用户验收；生产Windows新窗口已正式接入。** 使用四个固定版本的必要本地crate补丁，精确child和来源environment，原生自关闭及结果回调延后到事件循环；原生接管不改unknown会话。普通新窗口保持normal，不猜认证；失败只显示来源账号的固定脱敏历史记录。
 
-本轮三个并行泳道：前端features/shell、后端registry/views，以及仅scratch原生实验；共享契约、依赖、权限及Git由主代理维护。没有应用生产runtime补丁。
+本轮三个实现代理并行：vendor、browser后端、features/shell前端。共享契约、依赖配置、权限、探测及Git由主代理维护；远程能力未放宽。生产负对照先失败，新二进制最终新根15项通过。完整版本、失败记录、检查和边界见正式报告。
 
 这不是“认证通过”，也不是失败后的系统浏览器回退。没有真实 Muse/Meta 登录证据，不能宣称免重复登录。
 

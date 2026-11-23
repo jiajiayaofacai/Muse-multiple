@@ -84,6 +84,37 @@ describe('账号新窗口受限诊断', () => {
     expect(state.diagnostics.map(item => item.id)).toEqual([3, 1, 4, 2, 5]);
   });
 
+  it('混合历史拒绝与创建失败时按事件编号选最新，隔离后台账号与无来源事件', () => {
+    const state = withAccounts();
+    state.diagnostics.push(
+      { id: 6, timestamp: 60, level: 'error', accountId: 'a', code: 'new_window_failed', safeMessage: 'A 创建失败' },
+      { id: 8, timestamp: 80, level: 'error', accountId: 'b', code: 'new_window_failed', safeMessage: 'B 创建失败' },
+      { id: 9, timestamp: 90, level: 'error', accountId: null, code: 'new_window_failed', safeMessage: '无来源失败' },
+      { id: 10, timestamp: 100, level: 'info', accountId: 'a', code: 'page_ready', safeMessage: '页面就绪' },
+    );
+    state.activeAccountId = 'b';
+    expect(accountNewWindowDiagnostic(state, 'a')?.id).toBe(6);
+    expect(accountNewWindowDiagnostic(state, 'b')?.id).toBe(8);
+    state.diagnostics.unshift({ id: 7, timestamp: 5, level: 'warn', accountId: 'a', code: 'new_window_blocked', safeMessage: 'A 最近拒绝' });
+    expect(accountNewWindowDiagnostic(state, 'a')?.id).toBe(7);
+  });
+
+  it('新标签 ready 和关闭后的完整快照只更新标签，不合成会话或成功通知', () => {
+    const current = withAccounts();
+    current.runtimes = [{ accountId: 'a', lifecycle: 'active', sessionStatus: 'reauthRequired', activeTabId: 'popup', protectionReasons: [] }];
+    const ready = { ...current, revision: 6, tabs: [{
+      id: 'popup', accountId: 'a', openerTabId: 'parent', purpose: 'normal' as const,
+      title: '外部页面', displayUrl: 'https://example.test/oauth', loadState: 'ready' as const, canGoBack: false, canGoForward: false,
+    }] };
+    const accepted = acceptSnapshot(current, ready);
+    expect(accepted.runtimes[0].sessionStatus).toBe('reauthRequired');
+    expect(accepted.diagnostics).toEqual(current.diagnostics);
+    const closed = acceptSnapshot(accepted, { ...ready, revision: 7, tabs: [], runtimes: [{ ...ready.runtimes[0], activeTabId: null }] });
+    expect(closed.tabs).toEqual([]);
+    expect(closed.runtimes[0].sessionStatus).toBe('reauthRequired');
+    expect(closed.diagnostics).toEqual(current.diagnostics);
+  });
+
   it('无快照、无选择、无归属事件或已移除来源账号时不展示', () => {
     const state = withAccounts();
     expect(accountNewWindowDiagnostic(null, 'a')).toBeNull();

@@ -68,12 +68,132 @@ fn update(
     }
 }
 
+pub(super) fn close(app: &AppHandle, account: &str, tab: &str) -> Result<(), AppError> {
+    close_inner(app, account, tab, false)
+}
+
+pub(super) fn discard(app: &AppHandle, account: &str, tab: &str) {
+    let _ = close_inner(app, account, tab, true);
+}
+
+fn close_inner(app: &AppHandle, account: &str, tab: &str, discard: bool) -> Result<(), AppError> {
+    let fresh = registry::lock(app)?.begin_close(account, tab)?;
+    // Mark first, then release the mutex before native destruction can reenter.
+    if let Some(view) = app.get_webview(&label(tab))
+        && let Err(error) = view.close()
+    {
+        let mut r = registry::lock(app)?;
+        if !discard && fresh {
+            r.cancel_close(account, tab);
+        }
+        r.diagnostic(
+            Some(account),
+            "native_close_failed",
+            "原生标签关闭未完成；未更改登录或应用连接状态",
+        );
+        r.changed();
+        drop(r);
+        let _ = emit(app);
+        return Err(AppError::native(error));
+    }
+    {
+        let mut r = registry::lock(app)?;
+        if r.forget_tab(account, tab) {
+            r.changed();
+        }
+    }
+    let layout = apply_layout(app);
+    let event = emit(app);
+    layout?;
+    event
+}
+
+fn blocked_popup(app: &AppHandle, account: &str, opener: &str) {
+    let recorded =
+        registry::lock(app).is_ok_and(|mut r| r.record_new_window_blocked(account, opener));
+    if recorded {
+        let _ = emit(app);
+    }
+}
+
+#[cfg(windows)]
+fn connector_child(
+    app: &AppHandle,
+    account: &str,
+    opener: &str,
+    target: Url,
+    features: tauri::webview::NewWindowFeatures,
+) -> NewWindowResponse<tauri::Wry> {
+    // The requested URL is only validated, never navigated by us. WebView2 owns
+    // navigation and the real WindowProxy/opener relationship after takeover.
+    if url(target.as_str()).is_err() || get(app, account, opener).is_err() {
+        blocked_popup(app, account, opener);
+        return NewWindowResponse::Deny;
+    }
+    let Ok(blank) = url("about:blank") else {
+        return NewWindowResponse::Deny;
+    };
+    let id = uuid::Uuid::new_v4().to_string();
+    let registered = registry::lock(app)
+        .and_then(|mut r| r.register_popup(account, opener, &id, display_url(&target)));
+    if registered.is_err() {
+        blocked_popup(app, account, opener);
+        return NewWindowResponse::Deny;
+    }
+    let child = match build_with_features(app, account, &id, blank, Some(features)) {
+        Ok(child) => child,
+        Err(_) => {
+            // Roll back this UUID only; never restore a stale selection or opener.
+            let _ = close_inner(app, account, &id, true);
+            blocked_popup(app, account, opener);
+            return NewWindowResponse::Deny;
+        }
+    };
+    let complete_app = app.clone();
+    let complete_account = account.to_owned();
+    NewWindowResponse::CreateWebview {
+        webview: child,
+        on_complete: Box::new(move |result| {
+            if result.is_err() {
+                // Ignore raw COM/runtime error strings, including their stage text.
+                update(&complete_app, &complete_account, &id, |r, _| {
+                    r.diagnostic(
+                        Some(&complete_account),
+                        "new_window_failed",
+                        "新窗口原生接管未完成；未确认登录或应用连接结果",
+                    );
+                });
+                let _ = close_inner(&complete_app, &complete_account, &id, true);
+                return;
+            }
+            let completed = registry::lock(&complete_app)
+                .is_ok_and(|mut r| r.complete_popup(&complete_account, &id));
+            if completed {
+                // Completion means native handoff only, not page/session success.
+                let _ = apply_layout(&complete_app);
+                let _ = emit(&complete_app);
+            }
+        }),
+    }
+}
+
 pub(super) fn build(
     app: &AppHandle,
     account: &str,
     tab: &str,
     target: Url,
 ) -> Result<Webview, AppError> {
+    build_with_features(app, account, tab, target, None)
+}
+
+fn build_with_features(
+    app: &AppHandle,
+    account: &str,
+    tab: &str,
+    target: Url,
+    features: Option<tauri::webview::NewWindowFeatures>,
+) -> Result<Webview, AppError> {
+    registry::lock(app)?.tab(account, tab)?;
     let state = app.state::<BrowserState>();
     let directory = super::storage::profile(&state.root, account)?;
     let navigation_app = app.clone();
@@ -117,15 +237,17 @@ pub(super) fn build(
             );
             allowed
         })
-        .on_new_window(move |_target, _features| {
-            // Do not copy the URL into an unrelated child: that loses opener/postMessage.
-            // See GATE.md for the synchronous reparent/Create hazard in the checked runtime.
-            let recorded = registry::lock(&popup_app)
-                .is_ok_and(|mut r| r.record_new_window_blocked(&popup_account, &popup_tab));
-            if recorded {
-                let _ = emit(&popup_app);
+        .on_new_window(move |target, features| {
+            #[cfg(windows)]
+            {
+                connector_child(&popup_app, &popup_account, &popup_tab, target, features)
             }
-            NewWindowResponse::Deny
+            #[cfg(not(windows))]
+            {
+                let _ = (target, features);
+                blocked_popup(&popup_app, &popup_account, &popup_tab);
+                NewWindowResponse::Deny
+            }
         })
         .on_document_title_changed(move |view, title| {
             update(view.app_handle(), &title_account, &title_tab, |r, i| {
@@ -147,6 +269,26 @@ pub(super) fn build(
                 // No inference about session validity or HTTP/network success.
             });
         });
+    #[cfg(windows)]
+    let builder = {
+        let close_account = account.to_owned();
+        let close_tab = tab.to_owned();
+        let builder = builder.on_close_requested(move |view| {
+            // The patched runtime queues this outside WebView2's COM callback.
+            if registry::lock(view.app_handle())
+                .is_ok_and(|r| r.tab(&close_account, &close_tab).is_ok())
+            {
+                let _ = close(view.app_handle(), &close_account, &close_tab);
+            }
+        });
+        if let Some(features) = features {
+            builder.with_environment(features.opener().environment.clone())
+        } else {
+            builder
+        }
+    };
+    #[cfg(not(windows))]
+    let _ = features;
     let builder = if cfg!(debug_assertions)
         && std::env::var("MUSE_MULTIPLE_M0_DEBUG").as_deref() == Ok("1")
     {
@@ -166,8 +308,12 @@ pub(super) fn build(
         )
         .map_err(AppError::native)?;
     if let Err(error) = view.hide() {
-        let _ = view.close();
+        let _ = close_inner(app, account, tab, true);
         return Err(AppError::native(error));
+    }
+    if registry::lock(app)?.tab(account, tab).is_err() {
+        let _ = view.close();
+        return Err(AppError::new("tab_not_found", "标签已关闭；未重新打开页面"));
     }
     Ok(view)
 }
@@ -186,7 +332,12 @@ pub(super) fn apply_layout(app: &AppHandle) -> Result<(), AppError> {
             .runtimes
             .iter()
             .find(|rt| Some(&rt.account_id) == r.snapshot.active_account_id.as_ref())
-            .and_then(|rt| rt.active_tab_id.clone());
+            .and_then(|rt| {
+                rt.active_tab_id
+                    .as_ref()
+                    .filter(|id| r.tab(&rt.account_id, id).is_ok())
+                    .cloned()
+            });
         (
             r.snapshot
                 .tabs

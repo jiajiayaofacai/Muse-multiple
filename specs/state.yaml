@@ -1,24 +1,24 @@
 project: Muse-multiple
-phase: integrated-login-and-connector-flow-boundaries
+phase: formal-connector-tabs-integrated-synthetic-verified
 active_milestone: M0
 plan_approval: approved-by-user
 branch: feat/m0-desktop
 native_gate: pending-real-inline-login-isolation-and-recovery
 real_muse_authentication: not-tested
 parallel_lanes:
-  browser_runtime: source-scoped-diagnostics-verified
-  typescript_shell: account-notices-and-flow-descriptions-verified
+  browser_runtime: formal-source-owned-child-and-native-close-integrated
+  typescript_shell: account-tabs-notices-and-flow-descriptions-verified
   synthetic_sites: callback-versus-close-probes-verified
 verification:
-  typescript_tests: 48-passed
+  typescript_tests: 53-passed
   synthetic_http_tests: 8-passed
-  rust_unit_tests: 15-passed
-  native_mechanism_checks: 8-passed
+  rust_unit_tests: 26-passed
+  native_mechanism_checks: final-fifteen-passed-fresh-profile
   native_shell_reload: previously-passed-not-rerun-this-round
   browser_connector_scenarios: three-passed-four-node-results-including-parent
 notes:
   - Native mechanism checks use synthetic data in a dedicated scratch profile.
-  - window.open is explicitly denied until safe same-window authentication handling is proven.
+  - Windows new-window requests use true source-account children; native handoff/close never proves authentication.
   - Real Muse login and recovery remain pending; popup handling is separate, not a proven prerequisite for ordinary login.
 authentication_review:
   date: 2026-11-23
@@ -29,14 +29,14 @@ authentication_review:
   native_probe_reruns: two-clean-roots-six-checks-each-passed
   next_action: superseded-by-user-corrected-inline-login-baseline
 controlled_evaluation:
-  approval: user-approved-evaluation-only-no-production-application
+  approval: initial-evaluation-only-superseded-by-explicit-formal-integration-approval
   report: specs/archive/spikes/SPIKE-m0-child-auth.md
   official_upgrade: no-complete-interface-found
   wry_scratch_spike: final-eight-checks-passed
   stability: earlier-hresult-0x80070057-unresolved
-  tauri_integration: isolated-two-native-rounds-passed-not-in-production
-  production_dependencies: unchanged
-  disposition: isolated-connector-evaluation-resumed-no-production-patch
+  tauri_integration: initial-two-isolated-rounds-followed-by-formal-integration
+  production_dependencies: four-pinned-local-crates-integrated-after-user-approval
+  disposition: formal-synthetic-verified-real-authentication-pending
 login_baseline:
   report: specs/verifications/MUSE-LOGIN-BASELINE.md
   official_entry: https://muse.ai/
@@ -44,20 +44,28 @@ login_baseline:
   user_reported: inline-code-then-optional-inline-two-step-code-then-chat
   full_flow_agent_verified: false
   next_action: verify-original-account-page-login-and-session-recovery-with-user-entered-credentials
-  scope_this_turn: parallel-flow-state-implementation-and-isolated-connector-verification
+  scope_this_turn: parallel-formal-connector-integration-and-production-native-verification
 connector_flow:
   user_reported: connect-app-opens-authorization-tab-then-auto-closes-and-muse-reports-result
-  production_new_windows: denied-with-source-scoped-diagnostic
-  production_callback_and_auto_close: not-implemented
+  production_new_windows: source-owned-native-children-windows
+  production_callback_and_auto_close: integrated-synthetic-verified
   real_service_connection: not-tested
   success_rule: native-close-or-page-ready-is-not-connection-success
-  dependency_patch: scratch-only-not-applied
+  dependency_patch: four-narrow-vendored-crates-with-licenses-and-source-hashes
   isolated_tauri_matrix: two-clean-profile-rounds-eight-checks-each-passed
   isolated_report: specs/archive/spikes/SPIKE-tauri-connector.md
-  remaining_runtime_gap: production-patch-approval-native-ownership-review-and-real-service-verification
+  remaining_runtime_gap: real-service-https-policy-and-long-term-verification
   isolated_fault_matrix: eight-one-shot-faults-with-recovery-passed
   isolated_success_regression: eight-passed-after-recovery-changes
   isolated_fault_report: specs/verifications/CONNECTOR-FAULT-RESULTS.md
   historical_hresult_repro: three-clean-starts-not-reproduced-not-proven-fixed
   persistent_native_failures: not-verified
-  next_decision: user-approval-before-production-fixed-dependency-patch
+  production_integration_approval: user-approved-via-explicit-choice-after-fault-verification
+  next_action: user-operated-real-inline-login-connector-and-session-recovery-acceptance
+  release_authorization: no-automatic-publish
+  real_credentials: user-entered-only
+  production_report: specs/verifications/CONNECTOR-PRODUCTION-RESULTS.md
+  production_native_rounds: thirteen-then-fifteen-then-final-fifteen-passed
+  production_negative_control: old-binary-fails-at-real-windowproxy-record
+  production_fault_injection: not-rerun-no-test-hooks-shipped
+  vendor_dispatch_tests: three-passed-by-dependency-agent

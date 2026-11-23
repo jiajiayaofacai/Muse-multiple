@@ -22,3 +22,10 @@ unsafe_code = "forbid"
 
 [lints.clippy]
 all = { level = "warn", priority = -1 }
+
+# Narrow, licensed fixed-version patches for Windows same-host child adoption.
+[patch.crates-io]
+tauri = { path = "vendor/tauri-2.11.5" }
+tauri-runtime = { path = "vendor/tauri-runtime-2.11.3" }
+tauri-runtime-wry = { path = "vendor/tauri-runtime-wry-2.11.4" }
+wry = { path = "vendor/wry-0.55.1" }

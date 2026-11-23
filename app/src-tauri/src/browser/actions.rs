@@ -16,13 +16,7 @@ pub(super) fn run(app: &AppHandle, action: Action) -> Result<(), AppError> {
             registry::lock(app)?.select(&account_id, Some(tab_id));
             Ok(())
         }
-        Action::CloseTab { account_id, tab_id } => {
-            views::get(app, &account_id, &tab_id)?
-                .close()
-                .map_err(AppError::native)?;
-            registry::lock(app)?.forget_tab(&account_id, &tab_id);
-            Ok(())
-        }
+        Action::CloseTab { account_id, tab_id } => views::close(app, &account_id, &tab_id),
         Action::Navigate {
             account_id,
             tab_id,
@@ -154,10 +148,11 @@ fn create_tab(app: &AppHandle, account: &str, input: &str) -> Result<(), AppErro
     }
     // Register before native creation; synchronous and late callbacks both validate ownership.
     if let Err(error) = views::build(app, account, &id, url) {
-        registry::lock(app)?.forget_tab(account, &id);
+        views::discard(app, account, &id);
         return Err(error);
     }
     let mut r = registry::lock(app)?;
+    r.tab(account, &id)?;
     r.opened.insert(account.into());
     r.select(account, Some(id));
     Ok(())

@@ -29,7 +29,7 @@ export function accountNewWindowDiagnostic(snapshot: WorkspaceSnapshot | null, a
   if (!snapshot || !accountId || !snapshot.accounts.some(account => account.id === accountId)) return null;
   // Diagnostics outlive source tabs; their accountId is the only ownership signal.
   return snapshot.diagnostics.reduce<DiagnosticDto | null>((latest, item) =>
-    item.accountId === accountId && item.code === 'new_window_blocked' && (!latest || item.id > latest.id)
+    item.accountId === accountId && (item.code === 'new_window_blocked' || item.code === 'new_window_failed') && (!latest || item.id > latest.id)
       ? item : latest, null);
 }
 
