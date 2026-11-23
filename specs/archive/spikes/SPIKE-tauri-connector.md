@@ -49,7 +49,7 @@ status: two-native-rounds-passed-failure-paths-and-production-integration-pendin
 
 保留失败：首次构建使用不存在的WebviewId类型而退出101，改为window_id+唯一label后通过；初次Clippy两处collapsible_if，等价修正后通过；前两次原生探测因inventory未登记command manifest而中止，补齐仅scratch登记后两轮完整通过，没有把中止轮计作成功。
 
-**未做COM Set*/Complete失败、目标缺失、队列失败注入。** 更早的GetDeferral失败尚未完整进入完成回报；队列失败目前只有固定日志，不能称为完整错误恢复。过去Wry实验的一次0x80070057本轮未复现，根因仍未知。
+**首轮边界（历史记录）：当时未做COM/目标缺失/队列失败注入。** 后续已在另一个副本完成8类一次性异常与恢复检查，并修正通知丢失，详见[异常恢复续测](../../verifications/CONNECTOR-FAULT-RESULTS.md)。不代表真实COM永久失败或系统队列耗尽已经验证。过去0x80070057续测3轮冷启动未复现，根因仍未知。
 
 真实账号、连接器服务端成功、HTTPS/第三方Cookie/COOP/noopener/named target、DPI焦点与视觉、休眠/删除交错、压力长期运行、重启会话恢复均未验证。
 
@@ -67,6 +67,6 @@ status: two-native-rounds-passed-failure-paths-and-production-integration-pendin
 
 ## 下一步边界
 
-正式接入需要单独确定固定补丁的维护/许可与更新方式，补全错误恢复与注入测试、生命周期/ACL审查，再由用户自行做真实连接器授权。不可把整个依赖副本直接搬入生产，也不能仅因合成成功就解除Deny。
+正式接入仍需单独确定固定补丁维护/许可与更新方式、审查原生所有权变化及生命周期/ACL，再由用户自行做真实连接器授权。一次性异常模型与恢复续测已补充，不能等同所有故障恢复。不可整体搬入生产或默认解除Deny。
 
 verify: [生产本轮结果](../../verifications/CONNECTOR-FLOW-RESULTS.md)仍须明确生产与隔离能力不同；不能将本报告写成真实连接器通过。

@@ -54,4 +54,10 @@ connector_flow:
   dependency_patch: scratch-only-not-applied
   isolated_tauri_matrix: two-clean-profile-rounds-eight-checks-each-passed
   isolated_report: specs/archive/spikes/SPIKE-tauri-connector.md
-  remaining_runtime_gap: failure-injection-and-early-deferral-or-queue-error-recovery
+  remaining_runtime_gap: production-patch-approval-native-ownership-review-and-real-service-verification
+  isolated_fault_matrix: eight-one-shot-faults-with-recovery-passed
+  isolated_success_regression: eight-passed-after-recovery-changes
+  isolated_fault_report: specs/verifications/CONNECTOR-FAULT-RESULTS.md
+  historical_hresult_repro: three-clean-starts-not-reproduced-not-proven-fixed
+  persistent_native_failures: not-verified
+  next_decision: user-approval-before-production-fixed-dependency-patch

@@ -65,4 +65,4 @@ verify: 按[app检查说明](../../app/README.md)运行质量检查；专用原�
 
 ## 隔离实验补充
 
-独立Tauri副本最终两轮原生矩阵各8/8通过，接管成功由原生COM返回确认，tab/manager实际清理，来源/B/壳在矩阵结束前存活。详见[隔离报告](../archive/spikes/SPIKE-tauri-connector.md)。没有把候选补丁应用到正式依赖；更早deferral/队列错误恢复与失败注入仍待完成，真实服务连接未验收。
+独立Tauri副本首轮原生矩阵两轮各8/8通过，详见[原生报告](../archive/spikes/SPIKE-tauri-connector.md)。随后在新副本完成8类一次性异常与后续重试，补上通知丢失后的延后处理及早期拒绝/deferral释放；正常8项也回归通过，见[异常恢复续测](CONNECTOR-FAULT-RESULTS.md)。正式依赖仍未应用候选，真实服务连接与永久系统故障未验收。
