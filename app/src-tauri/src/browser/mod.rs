@@ -129,7 +129,10 @@ pub fn layout(app: &AppHandle, bounds: ContentBounds) -> Result<(), AppError> {
             bounds.layout_seq,
             r.bounds.as_ref().map(|b| b.layout_seq),
         ) {
-            return Err(AppError::new("invalid_layout", "布局请求无效或已过期"));
+            return Err(AppError::new(
+                "invalid_layout",
+                "网页布局暂时失效；调整窗口后可重新应用",
+            ));
         }
         r.bounds = Some(bounds);
     }

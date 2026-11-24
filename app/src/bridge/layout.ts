@@ -78,8 +78,9 @@ export class NativeLayout {
       } catch (error) {
         if (this.disposed || request !== this.request) return;
         const busy = !!error && typeof error === 'object' && 'code' in error && error.code === 'workspace_busy';
+        if (!!error && typeof error === 'object' && 'code' in error && error.code === 'invalid_layout') this.key = '';
         if (!busy || retry === 3) {
-          // Non-transient failures stay cached to avoid diagnostic/snapshot IPC loops.
+          // Non-transient failures stay cached unless native bounds may need a later refresh.
           // Exhausted busy batches stop here, but a later same-geometry call may recover.
           if (busy) this.key = '';
           throw error;

@@ -11,9 +11,9 @@ parallel_lanes:
   synthetic_sites: callback-versus-close-probes-verified
 verification:
   typescript_tests: 54-passed
-  synthetic_http_tests: 8-passed-previous-cycle-not-rerun-current
+  synthetic_http_tests: 8-passed-current-cycle
   rust_unit_tests: 27-passed-lib-target-current
-  native_mechanism_checks: final-sixteen-passed-previous-cycle
+  native_mechanism_checks: not-run-user-requested-manual-acceptance
   frontend_build: passed-current-cycle
   windows_debug_build: passed-current-cycle
   full_cargo_test: main-harness-os-error-5-not-pass
@@ -75,19 +75,19 @@ connector_flow:
   latest_blank_tab_regression: plus-about-blank-type-url-dom-title-ready-bounds-cleanup-passed
   latest_native_scratch_run: new-root-16-passed-real-muse-not-opened
   latest_failed_probe_cause: synthetic-server-stopped-shell-target-initial-about-blank
-  scope_current_request: remove-ui-stage-labels-set-user-screenshot-icon-diagnose-crash-and-terminal
+  scope_current_request: remove-stale-layout-copy-sync-fixture-and-enable-native-layout-recovery
   scope_last_turn: user-reported-four-ui-and-native-view-issues
   blank_tab_action: plus-creates-normal-about-blank-and-focuses-empty-address-bar
   layout_regression: show-active-view-before-hiding-inactive-siblings
   removed_status_copy: named-m0-connected-session-validity-banner-hidden
-  native_regression: final-sixteen-passed-new-tab-address-and-dom-visible
+  native_regression: not-run-this-cycle-user-will-verify-desktop-rendering
   real_muse_login_or_navigation: not-tested
   latest_active_app_process: not-running-user-closed
   latest_visible_windows: none-user-closed
   ui_phase_badges: removed-user-visible-m0-markers
   requested_screenshot_icon: source-copied-png-ico-and-debug-build-passed-runtime-appearance-unverified
   latest_startup_blocker: release-build-e0463-windows-core-full-test-harness-os-error-5
-  no_cargo_or_native_reprobe_current_cycle: false
+  no_cargo_or_native_reprobe_current_cycle: cargo-rerun-native-not-run-user-requested-manual-acceptance
   requested_icon_runtime: debug-build-passed-release-exe-not-verified
   current_debug_build: passed-target-X-BuildCache-icon-configured
   release_build: not-verified-e0463-windows-core

@@ -55,6 +55,10 @@ test('parent/popup HTTP bodies expose storage, real popup and machine-readable p
     assert.equal(response.status, 200);
     assert.match(response.headers['content-type'], /text\/html; charset=utf-8/);
     assert.match(response.body, new RegExp(`data-testid="${role}-page"`));
+    if (role === 'parent') {
+      assert.match(response.body, /<title>合成父站<\/title>/);
+      assert.match(response.body, /<h1>合成父站：不是 Muse 登录<\/h1>/);
+    }
     for (const id of ['cookie-value', 'local-value', 'session-value', 'indexeddb-value', 'open-popup', 'message-status', 'popup-list']) {
       assert.ok(response.body.includes(`data-testid="${id}"`), id);
     }

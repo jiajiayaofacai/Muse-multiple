@@ -116,10 +116,10 @@ if (!endpoint || !dataRoot || process.env.MUSE_M0_ALLOW_TEST_WRITES !== '1') {
   const typedState = await waitFor(async () => {
     const state = await snapshot();
     const tab = state.tabs.find(item => item.id === blankCreated.tab.id);
-    return tab?.loadState === 'ready' && tab.title === 'M0 合成父站' ? { state, tab } : null;
+    return tab?.loadState === 'ready' && tab.title === '合成父站' ? { state, tab } : null;
   }, 'native tab title and load state');
   assert.equal(typedState.tab.displayUrl, 'http://127.0.0.1:4317');
-  assert.equal(await typedPage.locator('h1').textContent(), 'M0 合成父站：不是 Muse 登录');
+  assert.equal(await typedPage.locator('h1').textContent(), '合成父站：不是 Muse 登录');
   await waitFor(async () => {
     const slot = await shell.locator('.native-slot').boundingBox();
     const viewport = await typedPage.evaluate(() => ({ width: innerWidth, height: innerHeight }));

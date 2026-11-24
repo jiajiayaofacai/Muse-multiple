@@ -153,18 +153,16 @@ describe('原生 slot 布局（不创建真实 WebView）', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('invalid_layout 仍缓存，同几何调用和 resize 不触发循环重试', async () => {
+  it('invalid_layout 后续可同几何布局事件恢复，不会自动重试', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-    const onError = vi.fn();
-    const send = vi.fn<(bounds: ContentBounds) => Promise<void>>().mockRejectedValue({ code: 'invalid_layout' });
-    reporter = new NativeLayout(slot, send, onError, { initialSequence: 0 });
+    const send = vi.fn<(bounds: ContentBounds) => Promise<void>>()
+      .mockRejectedValueOnce({ code: 'invalid_layout', safeMessage: '网页布局暂时失效；调整窗口后可重新应用' })
+      .mockResolvedValue();
+    reporter = new NativeLayout(slot, send, vi.fn(), { initialSequence: 0 });
     await expect(reporter.setVisible(true)).rejects.toMatchObject({ code: 'invalid_layout' });
-    await expect(reporter.setVisible(true)).rejects.toMatchObject({ code: 'invalid_layout' });
-    notifyResize();
-    frames[0](0);
-    await vi.advanceTimersByTimeAsync(1000);
-    expect(send).toHaveBeenCalledTimes(1);
-    expect(onError).toHaveBeenCalledTimes(1);
+    await reporter.setVisible(true);
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(send.mock.calls[1][0].layoutSeq).toBeGreaterThan(send.mock.calls[0][0].layoutSeq);
     expect(vi.getTimerCount()).toBe(0);
   });
 });
