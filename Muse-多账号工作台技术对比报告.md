@@ -4,13 +4,16 @@
 
 **以 Muse Panel 为架构主参考。** 用户在各自的 WebView 内按 Muse for Meta（`muse.ai`）流程登录。Rust 为每个账号分配稳定的、本机持久化的 WebView 存储。TypeScript 负责账号列表、当前账号和布局。切换只改变显示的 WebView，释放页面时保留对应的存储。这样可以避免因工作台切换而重复登录，服务端仍可按原有规则要求重新认证。
 
-| 项目 | 管理与切换方式 | 切回及重启后的登录状态 | 对 Rust + Tauri + TypeScript 的参考价值 |
+| 项目 | 管理与切换方式 | 会话/隔离模型及限制 | 对 Rust + Tauri + TypeScript 的参考价值 |
 | --- | --- | --- | --- |
-| **Muse Panel** | Electron 桌面版支持分组、多列并排、隐藏和休眠。Swift iOS 版提供单页账号切换、预热与回收 | 每个账号保留独立的持久化存储。已加载页面可直接切回，回收或重启后可在原存储中重载，前提是必要的登录材料仍在且有效 | **高。** 借鉴账号与存储的稳定绑定、页面生命周期、弹窗归属和删除行为 |
-| **Muse Account Switcher** | Chromium 扩展保存多份档案，切换时清除并替换同一浏览器资料里的站点状态，再刷新目标标签页 | 有效且完整的快照可免重复验证。跨重启保存的是扩展档案，原浏览器会话和快照恢复效果分别取决于浏览器与站点 | **中。** 用来了解登录涉及的存储、来源域与失败场景。共享资料内覆盖状态不适用于同窗独立并行 |
-| **rust-anything** | 通过记录、回放和差异比对逐步替换代码单元。工具中的切换指原实现与 Rust 实现之间切换 | 本次检查的项目入口和文档没有提供 Muse 账号管理、WebView 会话隔离或登录恢复能力 | **工程方法中等，会话设计低。** 借鉴回归测试与分步迁移，尤其适合本地可控、可重复执行的逻辑 |
+| **Muse Panel** | Electron 桌面版支持分组、多列并排、隐藏与休眠；Swift iOS 版提供单页切换、预热与回收 | 桌面版按账号 ID 绑定持久化 partition；休眠卸载视图，再用同一 partition 重载。服务端仍可能要求重新认证；重启后的会话有效性不能由 README 保证 | **高。** 参考稳定账号绑定、视图生命周期和账号删除边界；Electron partition 不等于 Tauri API |
+| **Muse Account Switcher** | Chromium 扩展保存 Cookie/Web Storage 快照，切换时清理目标存储、恢复快照并重载标签 | 属于同一浏览器资料内的覆盖式切换，多标签共享同一环境；IndexedDB 是可选实验，Web Storage 依赖目标 origin 和当前标签 | **中。** 用于了解存储种类、来源域和快照失败场景；不适合实现同窗并行独立账号 |
+| **muse2api** | Python/FastAPI 服务把 Muse 网页能力封装成 API，含服务端账号池、调度、任务、管理面板和 Chromium/CDP 驱动 | Store 将账号 Cookie 等写入服务端 JSON；Engine 为生成操作创建并销毁 CDP BrowserContext。这个按操作上下文隔离不是桌面工作台按账号长期持有的可见 WebView/profile | **局部参考。** 可学习账号租约、并发调度、资源清理、会话诊断和失败回归测试；不照搬服务端持有Cookie、账号导入或无头浏览器架构 |
+| **rust-anything** | Rust 迁移工具执行分析、桥接、记录、回放、差异比较和门槛检查；`enable/disable` 指实现切换 | 不提供 Muse 账号管理、WebView 会话隔离或登录恢复能力；回放只覆盖记录输入 | **Rust工程实践有参考价值，业务架构无参考价值。** 可借鉴职责拆分、错误边界、先写回归测试、有界外部进程和fmt/Clippy/test验证 |
 
-本报告依据三个本地项目的 CodeGraph 索引、关键源码和官方 API 文档。Muse 最新的登录链路、服务端会话寿命和 Windows 安装包行为尚未使用真实账号验证。目标平台未指定，以下将当前 Windows 环境作为首个验证平台。
+本报告对照 Muse Panel、Muse Account Switcher、muse2api 三个 Muse 产品/服务项目，以及 rust-anything Rust 工程参考。CodeGraph 0.9.7 已为 `muse2api-main/muse2api-main/` 建立索引：扫描53个文件，状态统计53 files、1,587 nodes、3,365 edges，数据库3,334,144字节，`pendingChanges` 为0；索引位于被忽略的项目内`.codegraph/`。查询结果用于源码导航，不代表服务已运行或认证已实测。
+
+下文将项目文档声明、当前源码事实和待实测假设分开。Muse最新登录链路、服务端会话寿命及Windows真实账号恢复仍未通过本次CodeGraph或静态阅读验证。目标平台以当前Windows作为首个验证环境。
 
 2026-11-23登录流程更正：用户明确普通登录的电话/邮箱、验证码和可选两步验证都在原网页完成，完整流程未由代理实测，见[网页登录基线](specs/verifications/MUSE-LOGIN-BASELINE.md)。后续用户补充连接器新授权标签场景，并在隔离验证后批准正式接入；正式工程现已通过合成原生回调/自关闭/隔离15项，见[正式接入结果](specs/verifications/CONNECTOR-PRODUCTION-RESULTS.md)。不能将该结果当作真实登录、第三方连接成功或重启恢复已验收。
 
@@ -29,21 +32,43 @@
 **账号管理。** 首次仍按站点流程登录，用户主动保存并命名档案，可备注、改名、删除或手动更新。默认记录 `muse.ai` 域下 Cookie（包括 API 可读取的 HttpOnly Cookie），从选中的 Muse 标签页采集当前来源的 `localStorage` 和 `sessionStorage`。可选 Meta 功能需额外权限，扩展覆盖 `facebook.com`、`meta.ai` 的 Cookie，默认关闭。IndexedDB 快照及切换时清除是两个独立选项，均默认关闭。 [存储范围与开关](X:/python-code/Muse-multiple/muse-switcher-main/muse-switcher-main/README.md:36) · [保存实现](X:/python-code/Muse-multiple/muse-switcher-main/muse-switcher-main/background.js:322)
 
 **切换与保留。** 切换先清除目标域范围的现有状态，再恢复选中的快照并重载一个标签页。其他同一资料里的标签页共享 Cookie，可能在后续请求中使用切换后的身份。代码没有在切换前自动保存离开的账号，也没有用认证结果确认登录恢复成功。续期后的最新状态需要手动覆盖旧档案。无 Muse 标签页时，代码新建标签页后提前返回，仅已恢复的 Cookie 可用。保存时记录了来源域，恢复代码将 Web Storage 写入当前找到的标签页，未比对保存的来源域。若保存和恢复落在 `muse.ai`、`auth.muse.ai` 两个不同来源，恢复的数据可能无法在预期页面使用。默认不清除 IndexedDB 也会留下前一账号的站点数据库。启用快照时仍有序列化和兼容性边界，例如 Blob 或 File 无法无损还原。 [找标签、采集来源与切换](X:/python-code/Muse-multiple/muse-switcher-main/muse-switcher-main/background.js:284) · [档案更新与清空](X:/python-code/Muse-multiple/muse-switcher-main/muse-switcher-main/background.js:441)
+**何时仍需登录。** 如果快照不完整、Cookie恢复失败、站点要求重新验证，或目标标签缺失且对应origin存储无法恢复，应回到站点正常登录流程。Switcher README把设备绑定列为可能解释，这只是项目说明，并非已核实的服务端规则；快照恢复不等于认证成功。 [README说明](X:/python-code/Muse-multiple/muse-switcher-main/muse-switcher-main/README.md:62-74)
 
-**何时仍需登录。** 如果只是目标标签页缺失且站点仍接受原快照，重新切换可能补齐 Web Storage。若没有完整的快照，Cookie 恢复失败、快照过期、缺少当前登录链路依赖的来源数据，或站点明确要求验证码、二次验证或重登，则回到正常登录流程。README 将设备绑定列为可能原因，实际规则尚未核实。快照和导出 JSON 含可用的会话凭据。工作台可借鉴它检查存储范围和错误分支的方式，产品的数据模型应让 WebView 引擎管理登录材料，避免复制到工作台配置、日志或导出文件。 [快照限制与凭据处理说明](X:/python-code/Muse-multiple/muse-switcher-main/muse-switcher-main/README.md:45)
+## rust-anything：Rust工程实践参考
 
-## rust-anything：借鉴迁移验证方法
+该仓库是Rust编写的迁移工具，不是Muse账号/WebView项目。源码与规范显示可参考的做法是：按职责组织模块（`src/lib.rs:10-72`）；小改动先写旧实现会失败的回归测试，并按单元、循环/桥接、原生和全应用分层（`CONTRIBUTING.md:55-69`）；新增或收尾时运行`cargo fmt`、`cargo clippy --all-targets -- -D warnings`、`cargo test`，有行为变化时更新状态说明（`CLAUDE.md:5-7`、`CONTRIBUTING.md:110-126`）；以`Result`/上下文报告失败并给外部命令设超时、关闭stdin、限定输出（`src/process.rs:31-50,58-90`）；区分fixture测试、真实项目验证、跳过和未测试（`docs/STATUS.md:3-8`）。
 
-该项目是 Rust 渐进迁移工具，主要流程是记录原实现行为、实现 Rust 单元、回放并比较，再根据门槛决定启用或回退。仓库中的 ESLint 和 Prettier 等属于迁移案例。CLI 入口和项目文档没有呈现 Muse 账号列表、独立浏览资料或认证流程。因此，账号切换是否保留登录、何时要求重登，在这个项目里均不适用。 [项目流程](X:/python-code/Muse-multiple/rust-anything-main/rust-anything-main/README.md:44) · [CLI 的实现切换](X:/python-code/Muse-multiple/rust-anything-main/rust-anything-main/src/main.rs:297)
+`DECISIONS.md`记录设计理由和可复审取舍；`docs/pitfalls.md`记录真实踩坑，例如测试覆盖遗漏、外部命令超时及路径相对工作目录的问题。工作台应将这些转化为本地可执行测试、受信任账号ID/路径边界、明确错误和有界原生操作。rust-anything自身也有大量FFI/codegen/桥接实现；它们服务于代码迁移产品，**不是**工作台所需能力，不能因为参考工程包含就增加依赖或`unsafe`。
 
-可将同样的方法用于比较迁移前后的行为，例如记录切换顺序、窗口显示、账号身份核对和删除结果。用本地测试站点和合成测试数据复现存储及失效场景，真实 Muse 登录另做手动验收。真实验证码、Cookie 和回调凭据不进入回放文件。回放覆盖的是已记录的输入，无法单独证明 Muse 或 Meta 的登录链路在真实环境中可用。 [回放覆盖边界](X:/python-code/Muse-multiple/rust-anything-main/rust-anything-main/docs/how-it-works.md:176)
+## muse2api：服务端API与账号池，不是桌面账号工作台
+
+本地项目源码以Python为主，另含JavaScript扩展、HTML管理面板及Docker/systemd部署；没有Rust crate。README自述将muse.ai网页端对话、生图、生视频包装为OpenAI兼容API，并提供管理页、账号池和扩展（`muse2api-main/muse2api-main/README.md:58-94`）；这是项目文档描述，本轮没有启动服务或接入Muse验证。
+
+- **入口与层次。** FastAPI入口`app.py`组装`Config`、`Store`和`MuseEngine`，定义API及管理路由（`app.py:51-92,1629-1630,1954-2037`）。Engine经CDP控制无头Chromium（`engine.py:313-327,364-416`）。
+- **账号与并发。** Store将账号和任务JSON持久化，并原子替换文件；公共账号视图省略Cookie和代理秘密（`store.py:76-96,110-147`）。账号池管理器管理总并发槽位和每账号租约，避免同账号并发互相踩踏（`app.py:95-188`）。`_account_operation`在维护时加租约、快照账号配置，最终关闭页面、清本地代理快照并释放租约；CodeGraph显示其调用方包括代理检测、会话探测与重登（`app.py:194-234`）。可借鉴租约、资源释放和请求快照的回归测试，不直接复用全局调度实现。
+- **隔离语义。** Store写入上游Cookie（`store.py:110-131`）；Engine通过`Target.createBrowserContext`创建上下文、`Target.createTarget`新建页面，操作结束调用`Target.disposeBrowserContext`（`engine.py:465-538`）。这是服务端生成操作的短生命周期隔离，不是每个用户账号持有、跨销毁/重启复用的桌面浏览资料。不得把BrowserContext隔离当作工作台稳定资料/真实登录恢复证据。
+- **测试与安全提示。** 项目有代理路由、并发、会话健康、Cookie要求及媒体等Python/Node测试；例如代理测试断言秘密不进入公开响应、忙账号不能修改配置、代理失败不假报会话成功（`tests/test_account_proxy_routing.py:20-49,75-105,120-134`）。测试以隔离临时目录和合成数据为例，值得参考其“副作用不泄漏到账号状态”的断言。Cookie导入、服务器JSON存储、无头自动化、代理/云端保活和在线升级都不直接符合本工作台的最小权限与用户本地可见浏览资料模型。
+
+## CodeGraph索引与源码查询
+
+已实际使用CodeGraph 0.9.7为`muse2api-main/muse2api-main/`初始化并索引：53个扫描文件、1,587节点、3,365边；数据库3,334,144字节，`pendingChanges=0`。项目含Python、JavaScript和YAML，索引留在本地且被根`.gitignore`排除。查询`MuseEngine`定位`engine.py:313`、`chat_completions`定位`app.py:1629`；查询`_account_operation`得到5个调用点及5类被调资源。CodeGraph关系图用于定位与导航，结论再对照源码阅读；它不运行服务、不证明Muse登录/授权，也不自动验证行为。
+
+可复用命令（均针对真实嵌套源码目录）：
+
+```powershell
+codegraph status --json .\muse2api-main\muse2api-main
+codegraph query MuseEngine --path .\muse2api-main\muse2api-main --limit 12
+codegraph callers _account_operation --path .\muse2api-main\muse2api-main --limit 20
+codegraph callees _account_operation --path .\muse2api-main\muse2api-main --limit 20
+codegraph files --path .\muse2api-main\muse2api-main --filter tests --format grouped
+```
 
 ## Tauri 工作台的实现取舍
 
-- **Windows。** 以 Rust 端生成并持久化的账号 UUID 为键，为每个账号创建使用独立绝对数据目录的 WebView2。重启时用相同 UUID 找回同一目录。采用 `WebviewBuilder::data_directory` 并验证运行时实际隔离。微软还支持同一 UDF 下的多个原生 Profile，后续只有在内存或磁盘数据表明需要时，再评估所选 Tauri 版本的接入成本。多个不同 UDF 同时运行会增加浏览器进程的内存与磁盘开销。 [Tauri 数据目录](https://docs.rs/tauri/2.12.7/tauri/webview/struct.WebviewBuilder.html#method.data_directory) · [WebView2 数据目录](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/user-data-folder) · [WebView2 多 Profile](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/multi-profile-support)
+- **Windows。** 正式工程实际锁定Tauri 2.11.5 / tauri-runtime 2.11.3 / runtime-wry 2.11.4 / Wry 0.55.1，并对四个必要crate做固定本地补丁（来源、许可证、哈希及边界见[vendor说明](app/src-tauri/vendor/README.md)）。Rust以稳定UUID映射每账号独立`data_directory`，用可见子WebView管理页面；本地合成验证已覆盖账号存储隔离和连接器child生命周期，不等于真实Muse会话跨重启已验收。WebView2也支持一个UDF内多个原生Profile；是否改用须以工作台内存/隔离测量和当前锁版本API评估，不从Electron partition直接推导。 [Tauri 2.11.5 WebviewBuilder](https://docs.rs/tauri/2.11.5/tauri/webview/struct.WebviewBuilder.html) · [WebView2 UDF](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/user-data-folder) · [WebView2多Profile](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/multi-profile-support)
 - **macOS。** 如果需要支持 macOS，在 14 及以上用 `data_store_identifier([u8; 16])` 绑定稳定的账号标识，保持非隐私模式。WKWebView 用的是系统数据存储，Electron 的 partition 目录结构不能直接套用。更早的 macOS 和 Linux 如需纳入支持范围，应分别验证隔离与持久化，再承诺支持。 [Tauri 数据存储标识](https://docs.rs/tauri/2.12.7/tauri/webview/struct.WebviewBuilder.html#method.data_store_identifier)
-- **单窗切换。** 先实现账号列表加一个可见区域，缓存少量已打开的原生 WebView。切换时显示目标视图并隐藏原视图。闲置回收只关闭视图，重新打开复用同一存储。按列并排可在后续体验验证中比较。Tauri 2.12.7 的 `Window::add_child` 需要桌面端 `unstable` Cargo feature，固定依赖版本并验证原生视图的位置、缩放、输入焦点及遮挡。 [单窗口子 WebView](https://docs.rs/tauri/2.12.7/tauri/window/struct.Window.html#method.add_child) · [WebView 显隐](https://docs.rs/tauri/2.12.7/tauri/webview/struct.Webview.html#method.show)
-- **认证归属与权限。** 本地 TypeScript 界面持有有限的账号管理指令。远程 Muse、Meta 页面和认证弹窗不分配本地文件、系统命令或账号管理权限。自建认证弹窗时，Tauri 文档要求 Windows 复用来源 WebView2 environment，macOS 使用来源 WebView configuration。登录失败时在原账号上下文提示用户重新验证，保留其分组及显示名。 [弹窗环境约束](https://docs.rs/tauri/2.12.7/tauri/webview/enum.NewWindowResponse.html#variant.Create) · [Tauri 权限模型](https://v2.tauri.app/security/capabilities/)
+- **单窗切换与弹窗。** 正式工程以原生child WebView在同一shell窗口显示/隐藏账号内标签；Windows connector child复用真实来源environment及opener，新窗口归属与自关闭已作合成原生验证。文档和系统浏览器链接仍按各自固定策略处理；不能把所有新窗口猜成认证。macOS/Linux的多视图和来源配置尚未实现或本轮验证，不据Windows结果承诺支持。 [Tauri 2.11.5 NewWindowResponse](https://docs.rs/tauri/2.11.5/tauri/webview/enum.NewWindowResponse.html) · [M0正式接入结果](specs/verifications/CONNECTOR-PRODUCTION-RESULTS.md)
+- **认证归属与权限。** 本地TypeScript界面持有有限账号管理指令；远程Muse/Meta页面无本地文件、系统命令或账号管理权限。Windows connector child复用来源WebView2 environment；其他平台需按对应runtime API单独评估。 [Tauri 2.11.5权限模型](https://v2.tauri.app/security/capabilities/)
 
 ## 验收清单
 
@@ -59,7 +84,9 @@
 验收先验证“每个账号只需在其本地资料里完成一次正常登录，之后有效会话可跨切换和重启继续使用”。真实账号的服务端失效、强制验证和跨运行时差异分别记录。源码静态检查可在工作区根目录运行下面的 CodeGraph 查询，确认相关符号仍存在。此检查不覆盖真实登录。
 
 ```powershell
-codegraph query WebViewPool -p .\muse-panel-main -l 1
-codegraph query doSwitch -p .\muse-switcher-main -l 2
-codegraph query diff -p .\rust-anything-main -l 1
+codegraph status --json .\muse2api-main\muse2api-main
+codegraph callers _account_operation --path .\muse2api-main\muse2api-main --limit 20
+codegraph query WebViewPool --path .\muse-panel-main\muse-panel-main --limit 10
+codegraph query doSwitch --path .\muse-switcher-main\muse-switcher-main --limit 10
+codegraph query process --path .\rust-anything-main\rust-anything-main --limit 10
 ```

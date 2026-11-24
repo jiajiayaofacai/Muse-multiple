@@ -2,6 +2,7 @@
 /muse-panel-main/
 /muse-switcher-main/
 /rust-anything-main/
+/muse2api-main/
 
 # 依赖、索引和构建产物
 **/node_modules/
