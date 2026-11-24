@@ -12,11 +12,11 @@ parallel_lanes:
 verification:
   typescript_tests: 55-passed-current-cycle
   synthetic_http_tests: 8-passed-current-cycle
-  rust_unit_tests: 27-passed-lib-target-current
-  native_mechanism_checks: not-run-user-requested-manual-acceptance
+  rust_unit_tests: 28-passed-current-cycle
+  native_mechanism_checks: not-run-user-visual-acceptance-pending
   frontend_build: passed-current-cycle
   windows_debug_build: passed-current-cycle
-  full_cargo_test: main-harness-os-error-5-not-pass
+  full_cargo_test: passed-all-targets-current-cycle
   windows_release_build: blocked-e0463-windows-core
   icon_source_png_ico: identical-source-and-dimensions-verified-runtime-visual-not-verified
 notes:
@@ -75,21 +75,21 @@ connector_flow:
   latest_blank_tab_regression: plus-about-blank-type-url-dom-title-ready-bounds-cleanup-passed
   latest_native_scratch_run: new-root-16-passed-real-muse-not-opened
   latest_failed_probe_cause: synthetic-server-stopped-shell-target-initial-about-blank
-  scope_current_request: clip-native-webview-bounds-to-viewport-after-layout-overflow
+  scope_current_request: rust-clamp-native-viewport-remove-recurring-layout-banner-and-sidebar-copy
   scope_last_turn: user-reported-four-ui-and-native-view-issues
   blank_tab_action: plus-creates-normal-about-blank-and-focuses-empty-address-bar
   layout_regression: show-active-view-before-hiding-inactive-siblings
   removed_status_copy: named-m0-connected-session-validity-banner-hidden
-  real_muse_login_or_navigation: user-entered-login-flow-in-progress-not-verified
-  latest_active_app_process: running-pid-5776
-  native_regression: viewport-clipping-implemented-waiting-user-visual-verification
-  blank_page_diagnosis: dpi120-native-child-exceeded-client-viewport-layout-request-rejected
-  blank_page_live_test: not-restarted-current-auth-flow-preserved-unverified
-  latest_visible_windows: muse-multiple-visible-user-testing-in-progress
+  real_muse_login_or_navigation: user-reported-blank-after-auth-not-verified
+  latest_active_app_process: not-running-at-current-check
+  native_regression: rust-viewport-clamp-built-awaiting-user-visual-verification
+  blank_page_diagnosis: dpi120-measured-native-child-exceeded-webview-client-area
+  blank_page_live_test: not-restarted-current-turn-no-active-app-process
+  latest_visible_windows: no-muse-process-at-current-check
   ui_phase_badges: removed-user-visible-m0-markers
   requested_screenshot_icon: source-copied-png-ico-and-debug-build-passed-runtime-appearance-unverified
   latest_startup_blocker: release-build-e0463-windows-core-full-test-harness-os-error-5
-  no_cargo_or_native_reprobe_current_cycle: cargo-rerun-native-not-run-user-requested-manual-acceptance
+  no_cargo_or_native_reprobe_current_cycle: cargo-all-target-checks-passed-native-ui-not-run-user-verification-pending
   requested_icon_runtime: debug-build-passed-release-exe-not-verified
-  current_debug_build: passed-target-X-BuildCache-icon-configured
+  current_debug_build: passed-after-native-clamp-user-visual-verification-pending
   release_build: not-verified-e0463-windows-core

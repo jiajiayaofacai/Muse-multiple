@@ -84,6 +84,27 @@ pub(crate) fn inactive_tabs<'a>(
         .map(String::as_str)
 }
 
+pub(crate) fn clipped_layout_bounds(
+    values: [f64; 4],
+    window: [f64; 2],
+    seq: u64,
+    previous: Option<u64>,
+) -> Option<[f64; 4]> {
+    if !values
+        .iter()
+        .chain(window.iter())
+        .all(|value| value.is_finite() && *value >= 0.)
+        || previous.is_some_and(|old| seq <= old)
+        || seq > 9_007_199_254_740_991
+    {
+        return None;
+    }
+    let [x, y, width, height] = values;
+    let x = x.min(window[0]);
+    let y = y.min(window[1]);
+    Some([x, y, width.min(window[0] - x), height.min(window[1] - y)])
+}
+
 pub(crate) fn valid_bounds(
     values: [f64; 4],
     window: [f64; 2],
@@ -178,6 +199,25 @@ mod tests {
         );
     }
 
+    #[test]
+    fn layout_bounds_are_clipped_to_the_native_client_area() {
+        assert_eq!(
+            clipped_layout_bounds([190., 173., 1000., 530.], [1113., 568.], 3, Some(2)),
+            Some([190., 173., 923., 395.])
+        );
+        assert_eq!(
+            clipped_layout_bounds([1200., 0., 100., 1.], [1280., 850.], 3, Some(2)),
+            Some([1200., 0., 80., 1.])
+        );
+        assert_eq!(
+            clipped_layout_bounds([0., 0., 1., 1.], [1280., 850.], 1, Some(1)),
+            None
+        );
+        assert_eq!(
+            clipped_layout_bounds([-1., 0., 1., 1.], [1280., 850.], 2, Some(1)),
+            None
+        );
+    }
     #[test]
     fn layout_rejects_nonfinite_negative_stale_and_outside_window() {
         assert!(valid_bounds(

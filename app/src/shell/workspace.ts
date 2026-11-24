@@ -20,6 +20,7 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
   let disposed = false;
   let accountsExpanded = true;
   let consoleOpen = false;
+  let layoutNotice: string | null = null;
   let clearedThrough = -1;
   let consoleLevel = 'all';
   let lastAddressTab: string | null = null;
@@ -62,14 +63,23 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
   const dialog = find<HTMLDialogElement>('dialog');
   const connection = find('.connection-banner');
   const errorBanner = find('.error-banner');
-  const layout = new NativeLayout(slot, bounds => bridge.layout(bounds), showError);
+  const layout = new NativeLayout(slot, bounds => bridge.layout(bounds), showLayoutError);
 
   function showError(error: unknown): void {
     if (disposed) return;
     errorBanner.querySelector('span')!.textContent = safeError(error);
     errorBanner.hidden = false;
   }
-
+  function showLayoutError(error: unknown): void {
+    if (disposed) return;
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'invalid_layout') {
+      layoutNotice = '原生网页布局校验未通过；请查看控制台诊断。未读取页面内容。';
+      errorBanner.hidden = true;
+      if (consoleOpen) renderConsole();
+      return;
+    }
+    showError(error);
+  }
   function currentTab(): TabDto | undefined {
     const runtime = snapshot?.runtimes.find(item => item.accountId === selectedAccountId);
     return snapshot?.tabs.find(tab => tab.id === runtime?.activeTabId && tab.accountId === selectedAccountId);
@@ -78,7 +88,7 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
   function syncLayout(): void {
     const visible = ready && route === 'account' && snapshot?.activeAccountId === selectedAccountId
       && !!currentTab() && !dialog.open && !openingDialog;
-    void layout.setVisible(visible).catch(showError);
+    void layout.setVisible(visible).catch(showLayoutError);
   }
 
   function receive(incoming: WorkspaceSnapshot): void {
@@ -105,7 +115,7 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
         return `<button class="account-row ${isSelected ? 'active' : ''}" data-action="select-account" data-id="${esc(account.id)}" title="${esc(account.name)}${isSelected ? ' · 当前账号' : ''}" ${ready ? '' : 'disabled'} ${isSelected ? 'aria-current="page"' : ''}><span class="avatar">${esc(Array.from(account.name)[0] ?? 'M')}</span><span class="account-copy"><span class="account-name">${esc(account.name)}</span>${isSelected ? `<small>${runtime ? sessionLabels[runtime.sessionStatus] : '登录状态未验证'}</small>` : ''}</span>${isSelected ? '<span class="current-label">当前</span>' : ''}</button>`;
       }).join('')}${!accounts.length ? `<p class="sidebar-empty">${snapshot ? '尚无账号档案' : '等待原生连接'}</p>` : ''}</div></div>
       <button class="nav-button add-nav" data-action="add-account" title="添加 Muse 账号${ready ? '' : '（需连接原生运行时）'}" ${ready ? '' : 'disabled'}>${icon('plus')}<span class="nav-label">添加 Muse 账号</span></button>
-      <div class="sidebar-bottom"><button class="nav-button ${route === 'settings' ? 'active' : ''}" data-action="settings" ${route === 'settings' ? 'aria-current="page"' : ''} title="设置">${icon('settings')}<span class="nav-label">设置</span></button><button class="nav-button collapse-button" data-action="collapse-sidebar" title="展开或收起侧栏" aria-label="展开或收起侧栏" aria-expanded="${!shell.classList.contains('compact')}">${icon('panel')}<span class="nav-label">收起侧栏</span></button><p class="sidebar-caption"><span class="tiny-dot"></span><span>登录状态由服务端决定</span></p></div>`;
+      <div class="sidebar-bottom"><button class="nav-button ${route === 'settings' ? 'active' : ''}" data-action="settings" ${route === 'settings' ? 'aria-current="page"' : ''} title="设置">${icon('settings')}<span class="nav-label">设置</span></button><button class="nav-button collapse-button" data-action="collapse-sidebar" title="展开或收起侧栏" aria-label="展开或收起侧栏" aria-expanded="${!shell.classList.contains('compact')}">${icon('panel')}<span class="nav-label">收起侧栏</span></button></div>`;
   }
 
   function renderBrowser(): void {
@@ -135,7 +145,9 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
 
   function renderConsole(): void {
     const diagnostics = (snapshot?.diagnostics ?? []).filter(item => item.id > clearedThrough && (consoleLevel === 'all' || item.level === consoleLevel)).slice(-200);
-    logs.innerHTML = diagnostics.length ? diagnostics.map(item => `<div class="log-row ${esc(item.level)}"><time>${esc(new Date(item.timestamp).toLocaleTimeString('zh-CN', { hour12: false }))}</time><span class="log-level">${esc(item.level.toUpperCase())}</span><code>${esc(item.code)}</code><span>${esc(item.safeMessage)}</span></div>`).join('') : '<p class="logs-empty">暂无符合条件的原生安全诊断。不会记录输入的地址、密码或验证码。</p>';
+    const rows = diagnostics.map(item => `<div class="log-row ${esc(item.level)}"><time>${esc(new Date(item.timestamp).toLocaleTimeString('zh-CN', { hour12: false }))}</time><span class="log-level">${esc(item.level.toUpperCase())}</span><code>${esc(item.code)}</code><span>${esc(item.safeMessage)}</span></div>`);
+    if (layoutNotice) rows.push(`<div class="log-row warn"><time>—</time><span class="log-level">WARN</span><code>layout_rejected</code><span>${esc(layoutNotice)}</span></div>`);
+    logs.innerHTML = rows.length ? rows.join('') : '<p class="logs-empty">暂无符合条件的原生安全诊断。不会记录输入的地址、密码或验证码。</p>';
   }
 
   function render(): void {
@@ -180,7 +192,7 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
       await layout.setVisible(false);
       route = next;
       render();
-    } catch (error) { showError(error); }
+    } catch (error) { showLayoutError(error); }
   }
 
   async function selectAccount(accountId: string): Promise<void> {
@@ -192,7 +204,7 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
         route = 'account';
       }
       render();
-    } catch (error) { showError(error); }
+    } catch (error) { showLayoutError(error); }
   }
 
   async function openDialog(kind: 'account' | 'tab'): Promise<void> {
@@ -207,7 +219,7 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
       dialog.innerHTML = `<form class="dialog-form" novalidate><header><span class="eyebrow">${kind === 'account' ? 'LOCAL ACCOUNT' : 'NEW TAB'}</span><button type="button" class="icon-button" data-action="close-dialog" aria-label="取消">${icon('close')}</button></header><h2 id="dialog-title">${kind === 'account' ? '添加 Muse 账号' : '新建网页标签'}</h2><p>${kind === 'account' ? '名称用于在本地辨认账号，不是登录凭据。首次登录在原生网页中完成。' : '网页在当前账号的原生浏览资料中打开，仅支持 HTTP / HTTPS。'}</p><label for="dialog-input">${kind === 'account' ? '账号名称（必填）' : '网页地址（必填）'}</label><input id="dialog-input" name="value" ${kind === 'account' ? 'placeholder="例如：工作账号"' : 'value="https://muse.ai/"'} autocomplete="off" spellcheck="false" aria-describedby="dialog-hint dialog-error" required><small id="dialog-hint">${kind === 'account' ? '同名允许；名称不影响独立资料的存储身份。' : '也可使用 http://127.0.0.1:4317 验证本地合成站点。'}</small><p id="dialog-error" class="input-error" role="alert"></p><footer><button type="button" class="secondary" data-action="close-dialog">取消</button><button class="primary" type="submit">${kind === 'account' ? '创建账号档案' : '打开标签'}</button></footer></form>`;
       dialog.showModal();
       find<HTMLInputElement>('#dialog-input').focus();
-    } catch (error) { showError(error); }
+    } catch (error) { showLayoutError(error); }
     finally {
       openingDialog = false;
       syncLayout();
@@ -245,6 +257,7 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
     }
     if (action === 'clear-console') {
       clearedThrough = Math.max(clearedThrough, ...(snapshot?.diagnostics.map(item => item.id) ?? []));
+      layoutNotice = null;
       renderConsole();
       return;
     }
@@ -339,7 +352,7 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
     ready = false;
     layout.dispose();
     connection.textContent = '原生连接失败 · 管理操作已禁用。请重新启动桌面应用后重试。';
-    showError(error);
+    showLayoutError(error);
     render();
   }
 

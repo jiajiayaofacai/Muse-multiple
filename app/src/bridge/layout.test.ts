@@ -166,7 +166,7 @@ describe('原生 slot 布局（不创建真实 WebView）', () => {
   it('invalid_layout 后续可同几何布局事件恢复，不会自动重试', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const send = vi.fn<(bounds: ContentBounds) => Promise<void>>()
-      .mockRejectedValueOnce({ code: 'invalid_layout', safeMessage: '网页布局暂时失效；调整窗口后可重新应用' })
+      .mockRejectedValueOnce({ code: 'invalid_layout', safeMessage: '原生布局请求无效；未读取网页内容' })
       .mockResolvedValue();
     reporter = new NativeLayout(slot, send, vi.fn(), { initialSequence: 0 });
     await expect(reporter.setVisible(true)).rejects.toMatchObject({ code: 'invalid_layout' });

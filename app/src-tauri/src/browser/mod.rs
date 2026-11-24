@@ -109,7 +109,7 @@ pub fn begin_layout(app: &AppHandle) -> Result<u64, AppError> {
     Ok(sequence)
 }
 
-pub fn layout(app: &AppHandle, bounds: ContentBounds) -> Result<(), AppError> {
+pub fn layout(app: &AppHandle, mut bounds: ContentBounds) -> Result<(), AppError> {
     let state = app
         .try_state::<BrowserState>()
         .ok_or_else(|| AppError::new("not_installed", "浏览模块未安装"))?;
@@ -123,17 +123,15 @@ pub fn layout(app: &AppHandle, bounds: ContentBounds) -> Result<(), AppError> {
         .to_logical::<f64>(window.scale_factor().map_err(AppError::native)?);
     {
         let mut r = registry::lock(app)?;
-        if !logic::valid_bounds(
+        let clipped = logic::clipped_layout_bounds(
             [bounds.x, bounds.y, bounds.width, bounds.height],
             [size.width, size.height],
             bounds.layout_seq,
             r.bounds.as_ref().map(|b| b.layout_seq),
-        ) {
-            return Err(AppError::new(
-                "invalid_layout",
-                "网页布局暂时失效；调整窗口后可重新应用",
-            ));
-        }
+        )
+        .ok_or_else(|| AppError::new("invalid_layout", "原生布局请求无效；未读取网页内容"))?;
+        [bounds.x, bounds.y, bounds.width, bounds.height] = clipped;
+        bounds.visible &= bounds.width > 0. && bounds.height > 0.;
         r.bounds = Some(bounds);
     }
     views::apply_layout(app)
