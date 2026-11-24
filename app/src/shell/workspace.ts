@@ -116,7 +116,7 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
     if (accountNotice.innerHTML !== notice) accountNotice.innerHTML = notice;
     accountNotice.hidden = !notice;
     if (lastAddressTab !== (active?.id ?? null) || document.activeElement !== address) {
-      address.value = active?.displayUrl ?? '';
+      address.value = active?.displayUrl === 'about:blank' ? '' : active?.displayUrl ?? '';
     }
     lastAddressTab = active?.id ?? null;
     address.disabled = !ready || !selectedAccountId;
@@ -226,7 +226,11 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
     if (action === 'home' || action === 'dashboard' || action === 'settings') return navigatePage(action);
     if (action === 'select-account') return selectAccount(button.dataset.id ?? '');
     if (action === 'add-account') return openDialog('account');
-    if (action === 'new-tab') return openDialog('tab');
+    if (action === 'new-tab') {
+      await openUrl('about:blank');
+      address.focus();
+      return;
+    }
     if (action === 'close-dialog') { if (!busy) dialog.close(); return; }
     if (action === 'dismiss-error') { errorBanner.hidden = true; layout.schedule(); return; }
     if (action === 'console') {
@@ -327,7 +331,7 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
       await layout.setVisible(false);
       await bridge.connect(receive);
       ready = true;
-      connection.textContent = '已连接原生运行时 · M0 验证版；登录有效性与认证隔离仍需实测。';
+      connection.hidden = true;
       connection.classList.add('connected');
       render();
     }

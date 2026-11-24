@@ -129,10 +129,7 @@ pub fn layout(app: &AppHandle, bounds: ContentBounds) -> Result<(), AppError> {
             bounds.layout_seq,
             r.bounds.as_ref().map(|b| b.layout_seq),
         ) {
-            return Err(AppError::new(
-                "invalid_layout",
-                "布局须为有限非负逻辑像素、位于工作台内且序号严格递增",
-            ));
+            return Err(AppError::new("invalid_layout", "布局请求无效或已过期"));
         }
         r.bounds = Some(bounds);
     }

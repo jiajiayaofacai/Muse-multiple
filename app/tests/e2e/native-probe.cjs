@@ -13,21 +13,21 @@ if (!endpoint || !dataRoot || process.env.MUSE_M0_ALLOW_TEST_WRITES !== '1') {
   console.log('Connected to dedicated M0 shell');
   const accountBrowsers = new Map();
   const pages = () => browser.contexts().flatMap(context => context.pages());
-  const shell = pages().find(page => /^(http:\/\/(127\.0\.0\.1:1420|tauri\.localhost)|tauri:\/\/localhost)\//.test(page.url()));
-  assert(shell, 'Dedicated M0 local shell must be open');
-  shell.setDefaultTimeout(8000);
-  await shell.waitForFunction(() => Boolean(window.__TAURI_INTERNALS__));
-  const invoke = (command, args) => shell.evaluate(([cmd, params]) => window.__TAURI_INTERNALS__.invoke(cmd, params), [command, args]);
-  const snapshot = () => invoke('workspace_snapshot');
-  const act = action => invoke('workspace_action', { action });
   const waitFor = async (condition, label) => {
-    for (let attempt = 0; attempt < 80; attempt++) {
+    for (let attempt = 0; attempt < 300; attempt++) {
       const result = await condition();
       if (result) return result;
       await new Promise(resolve => setTimeout(resolve, 100));
     }
     throw new Error(`Timed out: ${label}`);
   };
+  const shell = await waitFor(() => pages().find(page => /^(http:\/\/(127\.0\.0\.1:1420|tauri\.localhost)|tauri:\/\/localhost)\//.test(page.url())), 'dedicated local shell page');
+  assert(shell, 'Dedicated M0 local shell must be open');
+  shell.setDefaultTimeout(8000);
+  await shell.waitForFunction(() => Boolean(window.__TAURI_INTERNALS__));
+  const invoke = (command, args) => shell.evaluate(([cmd, params]) => window.__TAURI_INTERNALS__.invoke(cmd, params), [command, args]);
+  const snapshot = () => invoke('workspace_snapshot');
+  const act = action => invoke('workspace_action', { action });
   const site = 'http://127.0.0.1:4317/parent';
   const results = [];
   const passed = label => { results.push(label); console.log(`PASS ${label}`); };
@@ -92,6 +92,44 @@ if (!endpoint || !dataRoot || process.env.MUSE_M0_ALLOW_TEST_WRITES !== '1') {
   await same.page.waitForFunction(() => document.querySelector('[data-testid="indexeddb-value"]').textContent === 'A');
   for (const key of ['cookie-value', 'local-value', 'indexeddb-value']) assert.equal(await same.page.getByTestId(key).textContent(), 'A');
   passed('same account tabs reuse the correct browsing profile');
+  const beforeBlankTab = await snapshot();
+  await shell.locator('.tabbar [data-action="new-tab"]').click();
+  const blankCreated = await waitFor(async () => {
+    const state = await snapshot();
+    const tab = state.tabs.find(item => item.accountId === a.id && !beforeBlankTab.tabs.some(old => old.id === item.id));
+    return tab && state.tabs.length === beforeBlankTab.tabs.length + 1 ? { state, tab } : null;
+  }, 'plus button creates one native blank tab');
+  assert.equal(blankCreated.tab.displayUrl, 'about:blank');
+  assert.equal(blankCreated.tab.purpose, 'normal');
+  assert.equal(blankCreated.state.runtimes.find(runtime => runtime.accountId === a.id).activeTabId, blankCreated.tab.id);
+  assert(await shell.locator('dialog').isHidden(), 'adding a tab must not show a URL prompt');
+  const addressBar = shell.locator('.address-form input');
+  await waitFor(async () => await addressBar.inputValue() === '', 'blank tab leaves the address field ready');
+  const typedUrl = 'http://127.0.0.1:4317/parent?typed-navigation=1';
+  await addressBar.fill(typedUrl);
+  await addressBar.press('Enter');
+  const accountBrowser = accountBrowsers.get(a.id);
+  const typedPage = await waitFor(() => accountBrowser.contexts().flatMap(context => context.pages()).find(page => page.url() === typedUrl && !page.__typedProbeUsed), 'typed URL native target');
+  typedPage.__typedProbeUsed = true;
+  await waitFor(() => typedPage.evaluate(() => document.querySelector('[data-testid="page-status"]')?.dataset.state === 'ready'), 'typed page body rendered');
+  assert.equal(await typedPage.getByTestId('page-status').textContent(), 'ready');
+  const typedState = await waitFor(async () => {
+    const state = await snapshot();
+    const tab = state.tabs.find(item => item.id === blankCreated.tab.id);
+    return tab?.loadState === 'ready' && tab.title === 'M0 合成父站' ? { state, tab } : null;
+  }, 'native tab title and load state');
+  assert.equal(typedState.tab.displayUrl, 'http://127.0.0.1:4317');
+  assert.equal(await typedPage.locator('h1').textContent(), 'M0 合成父站：不是 Muse 登录');
+  await waitFor(async () => {
+    const slot = await shell.locator('.native-slot').boundingBox();
+    const viewport = await typedPage.evaluate(() => ({ width: innerWidth, height: innerHeight }));
+    const body = await typedPage.locator('body').boundingBox();
+    return slot && body && body.height > 0 && Math.abs(slot.width - viewport.width) <= 1 && Math.abs(slot.height - viewport.height) <= 1;
+  }, 'typed native page content has visible viewport bounds');
+  assert(await shell.locator('.error-banner').isHidden());
+  await act({ type: 'closeTab', accountId: a.id, tabId: blankCreated.tab.id });
+  await waitFor(async () => !(await snapshot()).tabs.some(tab => tab.id === blankCreated.tab.id), 'typed navigation tab closes');
+  passed('plus creates a prompt-free blank tab; typing a URL renders page content in the reserved native viewport');
   const denied = await same.page.evaluate(async () => {
     if (!window.__TAURI_INTERNALS__) return 'bridge-unavailable';
     try { await window.__TAURI_INTERNALS__.invoke('workspace_snapshot'); return 'unexpected-success'; }

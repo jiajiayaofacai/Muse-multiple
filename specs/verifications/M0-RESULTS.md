@@ -1,5 +1,7 @@
 # M0 原生验证结果
 
+> 当前进度更新（2026-11-24）：处理了新建空白标签、状态横幅和原生视图空白问题；最终新scratch原生探测16/16通过，TypeScript 53项、Rust 27项通过。真实Muse登录/授权尚未由用户验证。详见[连接器正式结果](CONNECTOR-PRODUCTION-RESULTS.md)。
+
 日期：2026-11-23
 平台：Windows；WebView2 Runtime 144.0.3719.104；Rust 1.97；Tauri 实际构建版本 2.11.5；`tauri-build` 2.6.3。
 
@@ -21,27 +23,16 @@
 | `npm --prefix app run test:connectors` | PASS：3个普通Edge交互场景（Node统计含父项4/4）；不是原生或真实连接器认证 |
 | `cargo fmt --check` | PASS |
 | `cargo clippy --locked --all-targets -- -D warnings` | PASS；MSVC 只报告 linker stdout warning |
-| `cargo test --locked` | PASS：26/26 Rust单元测试，含pending/closing、来源消失/嵌套/迟到回调/错误账号清理 |
+| `cargo test --locked -j 1` | PASS：27/27 Rust单元测试，含活动标签布局顺序回归 |
 | `cargo build --locked` | PASS；MSVC 只报告 linker stdout warning |
 | 原生逻辑独立 rustc 测试 | PASS：4/4，子代理阶段 |
-| 专用 WebView2 原生探测 | PASS：最终正式15项，真实child/opener、跨来源回调、自关闭、A/B归属、文章/拒绝/空态；真实认证另验 |
-| 原生壳页面重载 | 先前记录PASS；本轮未重跑，不以其他检查替代 |
-
-Rust 2.12.7 依赖在本机缓存不足且 crates.io 解析长时间等待；M0 使用本机可复现的 Tauri 2.11.5/tauri-build 2.6.3，不能把结果直接宣称为 2.12.7 结果。
-
-## 原生运行证据
-
-- 专用 debug 进程使用 `$env:MUSE_MULTIPLE_M0_DATA_DIR` 指向会话 scratch 的临时根目录，并设置 `$env:MUSE_MULTIPLE_M0_DEBUG=1`；没有读取用户日常浏览资料。
-- 工作台壳成功启动，原生快照显示合成账号 A/B、每账号独立 runtime、原生标签 `loadState=ready`，合成父站实际加载为 `http://127.0.0.1:4317/parent`。
-- 账号资料目录使用稳定 UUID：`profiles/<account-id>`；元数据和 profile 映射由 Rust 维护。第二实例锁测试通过，避免旧快照覆盖账号映射。
-- 远程页面调用 `workspace_snapshot` 未获得成功；命令由本地 shell label/origin 双重校验保护。普通浏览器模式只显示“未连接原生运行时”，不伪造账号。
-- 专用原生探测实际写读合成A/B：不同账号Cookie/localStorage/IndexedDB隔离，同账号标签共享正确资料，远程管理命令被拒绝；关闭最后标签后切走再回来不复活。六项检查通过。
+| 专用原生探测 | PASS：此前正式15项；本轮新scratch最终16项通过，补＋空白标签、地址栏导航和正文/视口检查 |
 
 ## 当前生产能力边界
 
 **普通登录与真实连接器成功仍待用户验收；生产Windows新窗口已正式接入。** 使用四个固定版本的必要本地crate补丁，精确child和来源environment，原生自关闭及结果回调延后到事件循环；原生接管不改unknown会话。普通新窗口保持normal，不猜认证；失败只显示来源账号的固定脱敏历史记录。
 
-本轮三个实现代理并行：vendor、browser后端、features/shell前端。共享契约、依赖配置、权限、探测及Git由主代理维护；远程能力未放宽。生产负对照先失败，新二进制最终新根15项通过。完整版本、失败记录、检查和边界见正式报告。
+本轮三个实现泳道：vendor、browser后端、features/shell前端。共享契约、依赖配置、权限、探测与Git由主代理维护；远程能力未放宽。本轮增加的原生空白标签/导航/布局检查详见正式报告。
 
 这不是“认证通过”，也不是失败后的系统浏览器回退。没有真实 Muse/Meta 登录证据，不能宣称免重复登录。
 

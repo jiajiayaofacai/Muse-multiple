@@ -52,6 +52,15 @@ pub(crate) fn allowed_url(input: &str) -> bool {
     !authority.is_empty() && !authority.contains('@') && !authority.contains('%')
 }
 
+pub(crate) fn inactive_tabs<'a>(
+    tabs: &'a [String],
+    active: Option<&str>,
+) -> impl Iterator<Item = &'a str> {
+    tabs.iter()
+        .filter(move |id| Some(id.as_str()) != active)
+        .map(String::as_str)
+}
+
 pub(crate) fn valid_bounds(
     values: [f64; 4],
     window: [f64; 2],
@@ -123,6 +132,14 @@ mod tests {
         ] {
             assert!(!allowed_url(url), "{url}");
         }
+    }
+
+    #[test]
+    fn layout_hides_only_siblings_after_selected_view_is_shown() {
+        let tabs = vec![A.to_owned(), B.to_owned()];
+        assert_eq!(inactive_tabs(&tabs, Some(B)).collect::<Vec<_>>(), vec![A]);
+        assert_eq!(inactive_tabs(&tabs, Some(A)).collect::<Vec<_>>(), vec![B]);
+        assert_eq!(inactive_tabs(&tabs, None).collect::<Vec<_>>(), vec![A, B]);
     }
 
     #[test]

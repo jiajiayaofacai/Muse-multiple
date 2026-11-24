@@ -12,9 +12,9 @@ parallel_lanes:
 verification:
   typescript_tests: 53-passed
   synthetic_http_tests: 8-passed
-  rust_unit_tests: 26-passed
-  native_mechanism_checks: final-fifteen-passed-fresh-profile
-  native_shell_reload: previously-passed-not-rerun-this-round
+  rust_unit_tests: 27-passed
+  native_mechanism_checks: final-sixteen-passed-fresh-scratch-profile
+  native_shell_reload: isolated-plus-blank-tab-typed-url-visible-dom-bounds-verified
   browser_connector_scenarios: three-passed-four-node-results-including-parent
 notes:
   - Native mechanism checks use synthetic data in a dedicated scratch profile.
@@ -69,3 +69,16 @@ connector_flow:
   production_negative_control: old-binary-fails-at-real-windowproxy-record
   production_fault_injection: not-rerun-no-test-hooks-shipped
   vendor_dispatch_tests: three-passed-by-dependency-agent
+  latest_blank_tab_regression: plus-about-blank-type-url-dom-title-ready-bounds-cleanup-passed
+  latest_native_scratch_run: new-root-16-passed-real-muse-not-opened
+  latest_failed_probe_cause: synthetic-server-stopped-shell-target-initial-about-blank
+  live_vite_and_synthetic_server: running-local-only
+  scope_last_turn: user-reported-four-ui-and-native-view-issues
+  blank_tab_action: plus-creates-normal-about-blank-and-focuses-empty-address-bar
+  layout_regression: show-active-view-before-hiding-inactive-siblings
+  removed_status_copy: named-m0-connected-session-validity-banner-hidden
+  native_regression: final-sixteen-passed-new-tab-address-and-dom-visible
+  real_muse_login_or_navigation: not-tested
+  latest_cli_build: tauri-dev-parallel-e0463-on-darling-displaydoc-phf; isolated-host-rerun-passed
+  latest_active_app_process: running-cargo-cache-target-build-without-console
+  latest_visible_window: muse-multiple-m0-native-verification-window

@@ -348,13 +348,12 @@ pub(super) fn apply_layout(app: &AppHandle) -> Result<(), AppError> {
             r.bounds.clone(),
         )
     };
-    // Hide every child before moving/showing the selected one. Never rely on CSS z-index.
-    for id in &tabs {
-        if let Some(view) = app.get_webview(&label(id)) {
-            view.hide().map_err(AppError::native)?;
-        }
-    }
     let Some(bounds) = bounds.filter(|b| b.visible && b.width > 0. && b.height > 0.) else {
+        for id in &tabs {
+            if let Some(view) = app.get_webview(&label(id)) {
+                view.hide().map_err(AppError::native)?;
+            }
+        }
         return Ok(());
     };
     let window = app
@@ -371,15 +370,27 @@ pub(super) fn apply_layout(app: &AppHandle) -> Result<(), AppError> {
         None,
     ) {
         // A resize may invalidate the last accepted bounds. Stay hidden until a fresh layout.
+        for id in &tabs {
+            if let Some(view) = app.get_webview(&label(id)) {
+                view.hide().map_err(AppError::native)?;
+            }
+        }
         return Ok(());
     }
-    if let Some(view) = active.and_then(|id| app.get_webview(&label(&id))) {
+    if let Some(view) = active.as_ref().and_then(|id| app.get_webview(&label(id))) {
         view.set_bounds(Rect {
             position: LogicalPosition::new(bounds.x, bounds.y).into(),
             size: LogicalSize::new(bounds.width, bounds.height).into(),
         })
         .map_err(AppError::native)?;
         view.show().map_err(AppError::native)?;
+    }
+    // Show the selected child before touching siblings, so an inactive hide error
+    // cannot leave the page selected by create_tab or navigate hidden.
+    for id in logic::inactive_tabs(&tabs, active.as_deref()) {
+        if let Some(view) = app.get_webview(&label(id)) {
+            view.hide().map_err(AppError::native)?;
+        }
     }
     Ok(())
 }

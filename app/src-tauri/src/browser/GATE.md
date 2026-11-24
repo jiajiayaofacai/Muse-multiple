@@ -6,7 +6,7 @@
 
 本轮生产代码已修正启动诊断：`login_verification_pending`，不再把普通登录全局标为BLOCKED。`record_new_window_blocked`只接受仍有效的来源账号/标签，即使B当前活跃也归实际发起的A；只增诊断/revision，不改sessionStatus、active账号或全局gateStatus。前端以账号归属展示历史受限请求；页面ready或标签消失均不标连接成功。
 
-生产Windows新窗口已通过固定四层依赖补丁接入真实child、来源environment、原生自关闭与脱敏结果回报；合成正式原生15项通过，不等于真实授权成功。见[正式接入报告](../../../../specs/verifications/CONNECTOR-PRODUCTION-RESULTS.md)与[vendor维护说明](../../vendor/README.md)。下文Deny/未应用的叙述是各历史阶段记录，不再代表当前代码；M0真实登录/恢复闸门仍未通过。
+生产Windows新窗口已通过固定四层依赖补丁接入真实child、来源environment、原生自关闭与脱敏结果回报；合成原生最新16项通过（含＋空白页和地址栏合成导航），不等于真实授权成功。见[正式接入报告](../../../../specs/verifications/CONNECTOR-PRODUCTION-RESULTS.md)与[vendor维护说明](../../vendor/README.md)。下文Deny/未应用的叙述是各历史阶段记录，不再代表当前代码；M0真实登录/恢复闸门仍未通过。
 
 ## 历史：新窗口能力限制与隔离实验（不是普通登录前提）
 
@@ -63,8 +63,11 @@ Select-String (Join-Path $registry 'tauri-2.11.5\src\app.rs') `
 - https://docs.rs/tauri/2.11.5/tauri/enum.WebviewEvent.html
 
 源码复核入口：
+
 - https://docs.rs/tauri/2.11.5/tauri/webview/struct.WebviewWindowBuilder.html#method.window_features
 - https://docs.rs/tauri/2.11.5/tauri/webview/struct.Webview.html#method.reparent
+
+本轮回归补充（2026-11-24）：新建标签“＋”在当前账号内直接创建`about:blank`原生标签，不弹网址对话框；地址栏清空并聚焦。地址栏输入合成HTTP地址后，WebView DOM的page-status和正文可读，标题/loadState同步，CDP viewport与native-slot bounds一致。详细原生探测见[正式原生矩阵](../../../specs/verifications/CONNECTOR-PRODUCTION-RESULTS.md)。不代表真实Muse登录或授权已验收。
 
 ## 公开 Rust API
 
