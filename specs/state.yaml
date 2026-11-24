@@ -10,7 +10,7 @@ parallel_lanes:
   typescript_shell: account-tabs-notices-and-flow-descriptions-verified
   synthetic_sites: callback-versus-close-probes-verified
 verification:
-  typescript_tests: 54-passed
+  typescript_tests: 55-passed-current-cycle
   synthetic_http_tests: 8-passed-current-cycle
   rust_unit_tests: 27-passed-lib-target-current
   native_mechanism_checks: not-run-user-requested-manual-acceptance
@@ -75,15 +75,17 @@ connector_flow:
   latest_blank_tab_regression: plus-about-blank-type-url-dom-title-ready-bounds-cleanup-passed
   latest_native_scratch_run: new-root-16-passed-real-muse-not-opened
   latest_failed_probe_cause: synthetic-server-stopped-shell-target-initial-about-blank
-  scope_current_request: remove-stale-layout-copy-sync-fixture-and-enable-native-layout-recovery
+  scope_current_request: clip-native-webview-bounds-to-viewport-after-layout-overflow
   scope_last_turn: user-reported-four-ui-and-native-view-issues
   blank_tab_action: plus-creates-normal-about-blank-and-focuses-empty-address-bar
   layout_regression: show-active-view-before-hiding-inactive-siblings
   removed_status_copy: named-m0-connected-session-validity-banner-hidden
-  native_regression: not-run-this-cycle-user-will-verify-desktop-rendering
-  real_muse_login_or_navigation: not-tested
-  latest_active_app_process: not-running-user-closed
-  latest_visible_windows: none-user-closed
+  real_muse_login_or_navigation: user-entered-login-flow-in-progress-not-verified
+  latest_active_app_process: running-pid-5776
+  native_regression: viewport-clipping-implemented-waiting-user-visual-verification
+  blank_page_diagnosis: dpi120-native-child-exceeded-client-viewport-layout-request-rejected
+  blank_page_live_test: not-restarted-current-auth-flow-preserved-unverified
+  latest_visible_windows: muse-multiple-visible-user-testing-in-progress
   ui_phase_badges: removed-user-visible-m0-markers
   requested_screenshot_icon: source-copied-png-ico-and-debug-build-passed-runtime-appearance-unverified
   latest_startup_blocker: release-build-e0463-windows-core-full-test-harness-os-error-5

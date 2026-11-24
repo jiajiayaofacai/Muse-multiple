@@ -1,13 +1,20 @@
 import type { ContentBounds } from '../../contracts/workspace';
 
 type Geometry = Omit<ContentBounds, 'layoutSeq'>;
+type Viewport = { width: number; height: number };
 
-export function slotGeometry(rect: Pick<DOMRect, 'x' | 'y' | 'width' | 'height'>, visible: boolean): Geometry {
-  if (!visible || rect.width <= 0 || rect.height <= 0) return { x: 0, y: 0, width: 0, height: 0, visible: false };
-  // Keep native bounds inside the CSS rectangle despite fractional DPI rounding.
-  const x = Math.ceil(rect.x);
-  const y = Math.ceil(rect.y);
-  return { x, y, width: Math.max(0, Math.floor(rect.x + rect.width) - x), height: Math.max(0, Math.floor(rect.y + rect.height) - y), visible: true };
+export function slotGeometry(rect: Pick<DOMRect, 'x' | 'y' | 'width' | 'height'>, visible: boolean, viewport: Viewport): Geometry {
+  if (!visible || rect.width <= 0 || rect.height <= 0 || viewport.width <= 0 || viewport.height <= 0) {
+    return { x: 0, y: 0, width: 0, height: 0, visible: false };
+  }
+  // Keep native bounds inside both the CSS slot and the WebView viewport.
+  const x = Math.ceil(Math.max(0, rect.x));
+  const y = Math.ceil(Math.max(0, rect.y));
+  const right = Math.min(viewport.width, rect.x + rect.width);
+  const bottom = Math.min(viewport.height, rect.y + rect.height);
+  const width = Math.max(0, Math.floor(right) - x);
+  const height = Math.max(0, Math.floor(bottom) - y);
+  return width && height ? { x, y, width, height, visible: true } : { x: 0, y: 0, width: 0, height: 0, visible: false };
 }
 
 export class NativeLayout {
@@ -59,7 +66,10 @@ export class NativeLayout {
 
   private flush(): Promise<void> {
     if (!this.initialized || this.disposed) return Promise.resolve();
-    const geometry = slotGeometry(this.slot.getBoundingClientRect(), this.visible);
+    const geometry = slotGeometry(this.slot.getBoundingClientRect(), this.visible, {
+      width: window.innerWidth,
+      height: window.innerHeight,
+    });
     const key = JSON.stringify(geometry);
     if (key === this.key) return this.pending;
     this.key = key;

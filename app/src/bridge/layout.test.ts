@@ -18,7 +18,7 @@ describe('原生 slot 布局（不创建真实 WebView）', () => {
       observe() {}
       disconnect() {}
     });
-    vi.stubGlobal('window', { addEventListener: vi.fn(), removeEventListener: vi.fn() });
+    vi.stubGlobal('window', { innerWidth: 1280, innerHeight: 850, addEventListener: vi.fn(), removeEventListener: vi.fn() });
     vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { frames.push(callback); return frames.length; });
     vi.stubGlobal('cancelAnimationFrame', vi.fn());
   });
@@ -29,14 +29,24 @@ describe('原生 slot 布局（不创建真实 WebView）', () => {
     vi.unstubAllGlobals();
   });
 
-  it('直接使用逻辑像素，不乘 DPI；隐藏或无面积使用 visible=false', () => {
-    expect(slotGeometry(rect, true)).toEqual({ x: 229, y: 167, width: 999, height: 600, visible: true });
-    expect(slotGeometry(rect, false)).toEqual({ x: 0, y: 0, width: 0, height: 0, visible: false });
-    expect(slotGeometry({ ...rect, height: 0 }, true).visible).toBe(false);
-    const actual = slotGeometry({ x: 228, y: 239.4, width: 1052, height: 604.8 }, true);
+  it('几何使用逻辑像素并裁入 viewport；隐藏或无面积使用 visible=false', () => {
+    const viewport = { width: 1280, height: 850 };
+    expect(slotGeometry(rect, true, viewport)).toEqual({ x: 229, y: 167, width: 999, height: 600, visible: true });
+    expect(slotGeometry({ x: 190, y: 173, width: 1000, height: 530 }, true, { width: 1113, height: 568 })).toEqual({ x: 190, y: 173, width: 923, height: 395, visible: true });
+    expect(slotGeometry(rect, false, viewport)).toEqual({ x: 0, y: 0, width: 0, height: 0, visible: false });
+    expect(slotGeometry({ ...rect, height: 0 }, true, viewport).visible).toBe(false);
+    const actual = slotGeometry({ x: 228, y: 239.4, width: 1052, height: 604.8 }, true, viewport);
     expect(actual.y + actual.height).toBe(844);
   });
 
+  it('NativeLayout sends bounds clipped to the WebView viewport', async () => {
+    rect = { x: 190, y: 173, width: 1000, height: 530 };
+    vi.stubGlobal('window', { innerWidth: 1113, innerHeight: 568, addEventListener: vi.fn(), removeEventListener: vi.fn() });
+    const send = vi.fn<(bounds: ContentBounds) => Promise<void>>().mockResolvedValue();
+    reporter = new NativeLayout(slot, send, vi.fn(), { initialSequence: 0 });
+    await reporter.setVisible(true);
+    expect(send).toHaveBeenCalledWith({ x: 190, y: 173, width: 923, height: 395, visible: true, layoutSeq: 1 });
+  });
   it('相同几何去重，显隐和尺寸变更才推进 layoutSeq', async () => {
     const send = vi.fn<(bounds: ContentBounds) => Promise<void>>().mockResolvedValue();
     reporter = new NativeLayout(slot, send, vi.fn(), { initialSequence: 0 });
