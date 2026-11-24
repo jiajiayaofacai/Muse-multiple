@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+use tauri::Manager;
 mod browser;
 
 fn trusted_shell(label: &str, url: &tauri::Url) -> bool {
@@ -69,6 +70,51 @@ async fn workspace_layout_begin(
     browser::begin_layout(&app)
 }
 
+fn restore_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("shell") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
+}
+
+fn install_tray(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    use tauri::{
+        menu::{Menu, MenuItem},
+        tray::{MouseButton, TrayIconBuilder, TrayIconEvent},
+    };
+    let icon = app
+        .default_window_icon()
+        .cloned()
+        .ok_or("application icon is unavailable")?;
+    let show = MenuItem::with_id(app, "show", "显示工作台", true, None::<&str>)?;
+    let exit = MenuItem::with_id(app, "exit", "退出", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&show, &exit])?;
+    TrayIconBuilder::with_id("muse-multiple-tray")
+        .icon(icon)
+        .tooltip("Muse-multiple")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id().as_ref() {
+            "show" => restore_window(app),
+            "exit" => app.exit(0),
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if matches!(
+                event,
+                TrayIconEvent::Click {
+                    button: MouseButton::Left,
+                    ..
+                }
+            ) {
+                restore_window(tray.app_handle());
+            }
+        })
+        .build(app)?;
+    Ok(())
+}
+
 pub fn run() {
     let result = tauri::Builder::default()
         .setup(|app| {
@@ -85,7 +131,11 @@ pub fn run() {
             let shell = window.build()?;
             shell.show()?;
             shell.unminimize()?;
-            browser::install(app)
+            browser::install(app)?;
+            if install_tray(app.handle()).is_err() {
+                browser::tray_unavailable(app.handle());
+            }
+            Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             workspace_snapshot,

@@ -1,10 +1,10 @@
 project: Muse-multiple
-phase: formal-connector-tabs-integrated-synthetic-verified
-active_milestone: M0
+phase: feature-source-and-unified-checks-complete-release-packages-built
+active_milestone: M1-M6
 plan_approval: approved-by-user
 branch: feat/m0-desktop
 native_gate: pending-real-inline-login-isolation-and-recovery
-real_muse_authentication: not-tested
+real_muse_authentication: user-reported-single-account-only; A-B-isolation-and-recovery-not-tested
 parallel_lanes:
   browser_runtime: formal-source-owned-child-and-native-close-integrated
   typescript_shell: account-tabs-notices-and-flow-descriptions-verified
@@ -12,13 +12,20 @@ parallel_lanes:
 verification:
   typescript_tests: 55-passed-current-cycle
   synthetic_http_tests: 8-passed-current-cycle
-  rust_unit_tests: 28-passed-current-cycle
-  native_mechanism_checks: not-run-user-visual-acceptance-pending
+  synthetic_edge_connector_tests: 4-passed-current-cycle
+  rust_library_tests: 31-passed-current-cycle
+  rust_fmt_clippy: passed-current-cycle
+  full_cargo_test: blocked-windows-shared-target-linker-LNK1104-os-error-5
+  isolated_full_target_test: blocked-serde-derive-load-os-error-32-and-X-drive-build-helper-os-error-5
+  native_scratch_probe: 19-passed-current-cycle
   frontend_build: passed-current-cycle
   windows_debug_build: passed-current-cycle
-  full_cargo_test: passed-all-targets-current-cycle
-  windows_release_build: blocked-e0463-windows-core
-  icon_source_png_ico: identical-source-and-dimensions-verified-runtime-visual-not-verified
+  windows_release_build: passed-current-cycle
+  msi_bundle: passed-current-cycle
+  nsis_bundle: passed-current-cycle
+  installer_startup: not-tested
+  real_muse_authentication: user-reported-single-account-only; A-B-and-recovery-not-tested
+  real_connector_service: not-tested
 notes:
   - Native mechanism checks use synthetic data in a dedicated scratch profile.
   - Windows new-window requests use true source-account children; native handoff/close never proves authentication.
@@ -47,7 +54,7 @@ login_baseline:
   user_reported: inline-code-then-optional-inline-two-step-code-then-chat
   full_flow_agent_verified: false
   next_action: verify-original-account-page-login-and-session-recovery-with-user-entered-credentials
-  scope_this_turn: parallel-formal-connector-integration-and-production-native-verification
+  next_action: complete M1-M6 feature source; then perform unified verification and record real-account criteria as pending
 connector_flow:
   user_reported: connect-app-opens-authorization-tab-then-auto-closes-and-muse-reports-result
   production_new_windows: source-owned-native-children-windows
@@ -88,8 +95,13 @@ connector_flow:
   latest_visible_windows: no-muse-process-at-current-check
   ui_phase_badges: removed-user-visible-m0-markers
   requested_screenshot_icon: source-copied-png-ico-and-debug-build-passed-runtime-appearance-unverified
-  latest_startup_blocker: release-build-e0463-windows-core-full-test-harness-os-error-5
-  no_cargo_or_native_reprobe_current_cycle: cargo-all-target-checks-passed-native-ui-not-run-user-verification-pending
-  requested_icon_runtime: debug-build-passed-release-exe-not-verified
-  current_debug_build: passed-after-native-clamp-user-visual-verification-pending
-  release_build: not-verified-e0463-windows-core
+  latest_startup_blocker: full-cargo-test-main-harness-linker-file-access-LNK1104-os-error-5
+  native_probe: isolated-synthetic-19-passed-current-cycle-real-auth-not-tested
+  installer_bundles: msi-and-nsis-built-install-start-not-tested
+current_feature_batch:
+  scope: M1-M6
+  status: feature-source-complete-unified-checks-run
+  base_commit: 791b0fae2f26ccb2ff5af4daa120174ab1db336e
+  tests_and_builds: frontend-and-synthetic-passed; rust-lib-31-passed; full-harness-blocked; debug-release-and-bundles-built
+  real_authentication: user-reported-single-account-only; A-B-isolation-and-recovery-unverified
+  remaining: full-cargo-test-harness-environment; installer-install-start; real-user-authentication-and-connector-acceptance; final-review-and-git-sync

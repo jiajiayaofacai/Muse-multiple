@@ -16,5 +16,5 @@
       "capabilities": ["shell"]
     }
   },
-  "bundle": { "active": false, "icon": ["icons/generated/icon.png", "icons/generated/icon.ico"] }
+  "bundle": { "active": true, "targets": ["msi", "nsis"], "icon": ["icons/generated/icon.png", "icons/generated/icon.ico"] }
 }

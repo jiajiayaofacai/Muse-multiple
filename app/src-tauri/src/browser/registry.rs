@@ -1,6 +1,6 @@
 use super::{logic, model::*};
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     path::PathBuf,
     sync::{Mutex, MutexGuard},
     time::{SystemTime, UNIX_EPOCH},
@@ -24,6 +24,7 @@ pub(super) struct Registry {
     pending_popups: HashSet<String>,
     closing: HashSet<String>,
     diagnostic_seq: u64,
+    background_since: HashMap<String, u64>,
 }
 
 pub(super) fn now() -> u64 {
@@ -46,7 +47,12 @@ pub(super) fn lock(app: &AppHandle) -> Result<MutexGuard<'_, Registry>, AppError
 }
 
 impl Registry {
+    #[cfg(test)]
     pub fn new(accounts: Vec<Account>) -> Self {
+        Self::with_settings(accounts, Settings::default())
+    }
+
+    pub fn with_settings(accounts: Vec<Account>, settings: Settings) -> Self {
         let runtimes = accounts
             .iter()
             .map(|a| Runtime {
@@ -63,7 +69,7 @@ impl Registry {
                 accounts,
                 tabs: Vec::new(),
                 runtimes,
-                settings: Settings::default(),
+                settings,
                 diagnostics: Vec::new(),
                 active_account_id: None,
                 gate_status: LOGIN_VERIFICATION_PENDING.into(),
@@ -73,13 +79,18 @@ impl Registry {
             pending_popups: HashSet::new(),
             closing: HashSet::new(),
             diagnostic_seq: 0,
+            background_since: HashMap::new(),
         };
         registry.diagnostic(
             None,
             "login_verification_pending",
             LOGIN_VERIFICATION_PENDING,
         );
-        registry.diagnostic(None, "history_unavailable", "M0 未接入可靠的原生历史查询或加载失败回调；历史按钮不可用，load finished 不代表登录或网络成功");
+        registry.diagnostic(
+            None,
+            "history_state_unknown",
+            "历史导航请求可提交，但引擎没有可靠历史状态回调；按钮不代表前进或后退一定可用",
+        );
         registry
     }
 
@@ -111,6 +122,60 @@ impl Registry {
             .ok_or_else(|| AppError::new("tab_not_found", "标签不存在或不属于此账号"))
     }
 
+    pub fn can_auto_sleep(&self, account: &str, now: u64) -> bool {
+        if self.account(account).is_err() {
+            return false;
+        }
+        let Some(runtime) = self
+            .snapshot
+            .runtimes
+            .iter()
+            .find(|runtime| runtime.account_id == account)
+        else {
+            return false;
+        };
+        let minutes = self.snapshot.settings.auto_sleep_minutes;
+        runtime.lifecycle == "background"
+            && self.snapshot.active_account_id.as_deref() != Some(account)
+            && minutes > 0
+            && self
+                .background_since
+                .get(account)
+                .is_some_and(|started| now.saturating_sub(*started) >= u64::from(minutes) * 60_000)
+            && self
+                .snapshot
+                .tabs
+                .iter()
+                .all(|tab| tab.account_id != account)
+    }
+
+    pub fn mark_sleeping(&mut self, account: &str) -> bool {
+        if self.account(account).is_err()
+            || self.snapshot.active_account_id.as_deref() == Some(account)
+            || self
+                .snapshot
+                .tabs
+                .iter()
+                .any(|tab| tab.account_id == account)
+        {
+            return false;
+        }
+        self.opened.remove(account);
+        self.background_since.remove(account);
+        if let Some(runtime) = self
+            .snapshot
+            .runtimes
+            .iter_mut()
+            .find(|runtime| runtime.account_id == account)
+        {
+            runtime.lifecycle = "sleeping";
+            runtime.active_tab_id = None;
+            runtime.protection_reasons.clear();
+        }
+        self.changed();
+        true
+    }
+
     pub fn select(&mut self, account: &str, tab: Option<String>) {
         if self.account(account).is_err()
             || tab
@@ -119,6 +184,14 @@ impl Registry {
         {
             return;
         }
+        let now = now();
+        if let Some(previous) = self.snapshot.active_account_id.clone()
+            && previous != account
+            && self.opened.contains(&previous)
+        {
+            self.background_since.insert(previous, now);
+        }
+        self.background_since.remove(account);
         self.snapshot.active_account_id = Some(account.into());
         for runtime in &mut self.snapshot.runtimes {
             if runtime.account_id == account {
@@ -169,6 +242,42 @@ impl Registry {
         }
         // `opened` deliberately remains set even when the last tab closes.
         true
+    }
+
+    pub fn forget_account(&mut self, account: &str) -> Result<(), AppError> {
+        let index = self.account(account)?;
+        if self
+            .snapshot
+            .tabs
+            .iter()
+            .any(|tab| tab.account_id == account)
+        {
+            return Err(AppError::new(
+                "account_has_tabs",
+                "账号仍有网页标签，未删除资料",
+            ));
+        }
+        self.snapshot.accounts.remove(index);
+        self.snapshot
+            .runtimes
+            .retain(|runtime| runtime.account_id != account);
+        self.opened.remove(account);
+        self.background_since.remove(account);
+        self.snapshot
+            .diagnostics
+            .retain(|diagnostic| diagnostic.account_id.as_deref() != Some(account));
+        if self.snapshot.active_account_id.as_deref() == Some(account) {
+            self.snapshot.active_account_id = None;
+            for runtime in &mut self.snapshot.runtimes {
+                runtime.lifecycle = if self.opened.contains(&runtime.account_id) {
+                    "background"
+                } else {
+                    "unopened"
+                };
+            }
+        }
+        self.changed();
+        Ok(())
     }
 
     pub fn begin_close(&mut self, account: &str, tab: &str) -> Result<bool, AppError> {
@@ -692,5 +801,29 @@ mod tests {
         assert!(r.snapshot.tabs.is_empty());
         assert!(r.snapshot.runtimes[0].active_tab_id.is_none());
         assert!(r.tab(A, T).is_err());
+    }
+    #[test]
+    fn automatic_sleep_waits_for_background_idle_and_never_sleeps_active_account() {
+        let mut r = Registry::new(
+            [A, B]
+                .into_iter()
+                .map(|id| Account {
+                    id: id.into(),
+                    name: "合成账号".into(),
+                    note: String::new(),
+                    last_used_at: 0,
+                })
+                .collect(),
+        );
+        r.opened.insert(A.into());
+        r.select(A, None);
+        let switched_at = now();
+        r.select(B, None);
+        assert!(!r.can_auto_sleep(A, switched_at + 14 * 60_000 + 59_999));
+        assert!(r.can_auto_sleep(A, switched_at + 15 * 60_000));
+        assert!(r.mark_sleeping(A));
+        assert_eq!(r.snapshot.runtimes[0].lifecycle, "sleeping");
+        r.select(A, None);
+        assert!(!r.mark_sleeping(A));
     }
 }

@@ -1,7 +1,7 @@
-import type { TabDto, WorkspaceAction, WorkspaceSnapshot } from '../../contracts/workspace';
+import type { SettingsDto, TabDto, WorkspaceAction, WorkspaceSnapshot } from '../../contracts/workspace';
 import { NativeBridge, safeError } from '../bridge/native';
 import { NativeLayout } from '../bridge/layout';
-import { accountName, acceptSnapshot, navigationUrl, sessionLabels } from '../features/workspace-state';
+import { accountMetadata, acceptSnapshot, navigationUrl, sessionLabels } from '../features/workspace-state';
 import { dashboardPage, homePage, settingsPage } from '../features/pages';
 import { accountRequestNotice, accountTabStrip, browserEmptyState } from '../features/browser-content';
 import { escapeHtml as esc, icon } from '../ui/markup';
@@ -26,16 +26,18 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
   let lastAddressTab: string | null = null;
   let openingDialog = false;
   let returnFocus: HTMLElement | null = null;
-  let dialogKind: 'account' | 'tab' = 'account';
+  let accountSearch = '';
+  let dialogKind: 'account' | 'tab' | 'edit-account' = 'account';
+  let editingAccountId: string | null = null;
 
   root.innerHTML = `<div class="workspace-shell">
     <header class="topbar"><button class="brand" data-action="home" aria-label="Muse-multiple 首页"><span class="brand-mark">M</span><span>Muse<span class="brand-light">-multiple</span></span></button>
-      <nav class="top-actions" aria-label="工作台工具"><button data-action="dashboard" class="top-link">${icon('dashboard')}仪表盘</button><button data-action="console" class="top-link" aria-expanded="false" aria-controls="workspace-console">${icon('terminal')}控制台</button><span class="top-divider"></span><button data-action="docs" class="top-link" disabled>${icon('book')}使用文档</button><button data-action="github" class="top-link" disabled>GitHub ${icon('external')}</button></nav></header>
+      <nav class="top-actions" aria-label="工作台工具"><button data-action="dashboard" class="top-link" title="查看工作台运行快照">${icon('dashboard')}仪表盘</button><button data-action="console" class="top-link" aria-expanded="false" aria-controls="workspace-console" title="查看脱敏原生诊断">${icon('terminal')}控制台</button><span class="top-divider"></span><button data-action="docs" class="top-link" disabled title="通过受限原生接口打开项目使用文档">${icon('book')}使用文档</button><button data-action="github" class="top-link" disabled title="通过受限原生接口打开项目 GitHub">GitHub ${icon('external')}</button></nav></header>
     <aside class="sidebar" aria-label="主导航"></aside>
     <main class="workspace"><div class="connection-banner" role="status"></div><div class="error-banner" role="alert" hidden><span></span><button data-action="dismiss-error" class="icon-button" aria-label="关闭错误提示">${icon('close')}</button></div>
       <section class="page-view" aria-label="工作区"></section>
       <section class="browser-view" aria-label="原生网页工作区" hidden>
-        <div class="tabbar"><div class="tabs" aria-label="网页标签"></div><button class="icon-button new-tab" data-action="new-tab" aria-label="新建标签" title="新建标签">${icon('plus')}</button></div>
+        <div class="tabbar"><div class="tabs" aria-label="网页标签"></div><button class="icon-button new-tab" data-action="new-tab" aria-label="新建标签" title="新建标签">${icon('plus')}</button><button class="text-button close-all-tabs" data-action="close-all-tabs" title="关闭当前账号全部标签">关闭全部</button></div>
         <div class="browser-toolbar"><button class="icon-button" data-action="back" aria-label="返回" title="返回">${icon('back')}</button><button class="icon-button" data-action="forward" aria-label="前进" title="前进">${icon('forward')}</button><button class="icon-button" data-action="reload" aria-label="刷新" title="刷新">${icon('reload')}</button><button class="icon-button" data-action="stop" aria-label="停止加载" title="停止加载">${icon('stop')}</button>
           <form class="address-form"><span>${icon('globe')}</span><input name="address" aria-label="网页地址" placeholder="输入 http:// 或 https:// 地址" autocomplete="off" spellcheck="false"><button type="submit" aria-label="前往地址">${icon('forward')}</button></form><span class="load-status" aria-live="polite"></span></div>
         <div class="account-notice connection-banner" role="status" aria-live="polite" hidden></div>
@@ -103,19 +105,31 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
     render();
   }
 
-  function renderSidebar(): void {
+
+  let composingAccountSearch = false;
+
+  function accountRowsMarkup(): string {
     const selected = route === 'account' ? selectedAccountId : null;
     const accounts = snapshot?.accounts ?? [];
-    const visibleAccounts = accountsExpanded ? accounts : accounts.filter(account => account.id === selected);
+    const search = accountSearch.trim().toLocaleLowerCase();
+    const visibleAccounts = (accountsExpanded ? accounts : accounts.filter(account => account.id === selected))
+      .filter(account => !search || `${account.name}\n${account.note}`.toLocaleLowerCase().includes(search));
+    return `${visibleAccounts.map(account => {
+      const isSelected = account.id === selected;
+      const runtime = snapshot?.runtimes.find(item => item.accountId === account.id);
+      return `<div class="account-item"><button class="account-row ${isSelected ? 'active' : ''}" data-action="select-account" data-id="${esc(account.id)}" title="${esc(account.name)}${isSelected ? ' · 当前账号' : ''}" ${ready ? '' : 'disabled'} ${isSelected ? 'aria-current="page"' : ''}><span class="avatar">${esc(Array.from(account.name)[0] ?? 'M')}</span><span class="account-copy"><span class="account-name">${esc(account.name)}</span>${account.note ? `<small class="account-note">${esc(account.note)}</small>` : ''}${isSelected ? `<small>${runtime ? sessionLabels[runtime.sessionStatus] : '登录状态未验证'}</small>` : ''}</span>${isSelected ? '<span class="current-label">当前</span>' : ''}</button><button class="icon-button account-edit" data-action="edit-account" data-id="${esc(account.id)}" aria-label="编辑 ${esc(account.name)} 的名称和备注" title="编辑名称和备注" ${ready ? '' : 'disabled'}>${icon('settings')}</button></div>`;
+    }).join('')}${accounts.length && !visibleAccounts.length ? '<p class="sidebar-empty">没有匹配的账号</p>' : ''}${!accounts.length ? `<p class="sidebar-empty">${snapshot ? '尚无账号档案' : '等待原生连接'}</p>` : ''}`;
+  }
+
+  function renderSidebar(): void {
+    if (composingAccountSearch && document.activeElement === sidebar.querySelector('.account-search')) return;
+    const accounts = snapshot?.accounts ?? [];
     sidebar.innerHTML = `<button class="nav-button ${route === 'home' ? 'active' : ''}" data-action="home" ${route === 'home' ? 'aria-current="page"' : ''} title="首页">${icon('home')}<span class="nav-label">首页</span></button>
       <div class="account-group"><button class="group-toggle" data-action="toggle-accounts" aria-expanded="${accountsExpanded}" aria-controls="account-list"><span class="group-chevron ${accountsExpanded ? 'expanded' : ''}">${icon('chevron')}</span><span class="nav-label">对话 / 账号</span><span class="nav-count">${snapshot ? accounts.length : '—'}</span></button>
-      <div id="account-list" class="accounts">${visibleAccounts.map(account => {
-        const isSelected = account.id === selected;
-        const runtime = snapshot?.runtimes.find(item => item.accountId === account.id);
-        return `<button class="account-row ${isSelected ? 'active' : ''}" data-action="select-account" data-id="${esc(account.id)}" title="${esc(account.name)}${isSelected ? ' · 当前账号' : ''}" ${ready ? '' : 'disabled'} ${isSelected ? 'aria-current="page"' : ''}><span class="avatar">${esc(Array.from(account.name)[0] ?? 'M')}</span><span class="account-copy"><span class="account-name">${esc(account.name)}</span>${isSelected ? `<small>${runtime ? sessionLabels[runtime.sessionStatus] : '登录状态未验证'}</small>` : ''}</span>${isSelected ? '<span class="current-label">当前</span>' : ''}</button>`;
-      }).join('')}${!accounts.length ? `<p class="sidebar-empty">${snapshot ? '尚无账号档案' : '等待原生连接'}</p>` : ''}</div></div>
+      ${accounts.length ? `<input class="account-search" aria-label="搜索账号名称或备注" placeholder="搜索账号" value="${esc(accountSearch)}">` : ''}
+      <div id="account-list" class="accounts">${accountRowsMarkup()}</div></div>
       <button class="nav-button add-nav" data-action="add-account" title="添加 Muse 账号${ready ? '' : '（需连接原生运行时）'}" ${ready ? '' : 'disabled'}>${icon('plus')}<span class="nav-label">添加 Muse 账号</span></button>
-      <div class="sidebar-bottom"><button class="nav-button ${route === 'settings' ? 'active' : ''}" data-action="settings" ${route === 'settings' ? 'aria-current="page"' : ''} title="设置">${icon('settings')}<span class="nav-label">设置</span></button><button class="nav-button collapse-button" data-action="collapse-sidebar" title="展开或收起侧栏" aria-label="展开或收起侧栏" aria-expanded="${!shell.classList.contains('compact')}">${icon('panel')}<span class="nav-label">收起侧栏</span></button></div>`;
+      <div class="sidebar-bottom"><button class="nav-button ${route === 'settings' ? 'active' : ''}" data-action="settings" ${route === 'settings' ? 'aria-current="page"' : ''} title="设置：管理工作台偏好">${icon('settings')}<span class="nav-label">设置</span></button><button class="nav-button collapse-button" data-action="collapse-sidebar" title="展开或收起侧栏" aria-label="展开或收起侧栏" aria-expanded="${!shell.classList.contains('compact')}">${icon('panel')}<span class="nav-label">收起侧栏</span></button></div>`;
   }
 
   function renderBrowser(): void {
@@ -131,17 +145,17 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
     lastAddressTab = active?.id ?? null;
     address.disabled = !ready || !selectedAccountId;
     find<HTMLButtonElement>('.address-form button[type="submit"]').disabled = address.disabled;
-    find<HTMLButtonElement>('[data-action="back"]').disabled = !ready || !active?.canGoBack;
-    find<HTMLButtonElement>('[data-action="forward"]').disabled = !ready || !active?.canGoForward;
+    find<HTMLButtonElement>('[data-action="close-all-tabs"]').disabled = !ready || !selectedAccountId || !accountTabs.length;
+    find<HTMLButtonElement>('[data-action="back"]').disabled = !ready || !active;
+    find<HTMLButtonElement>('[data-action="forward"]').disabled = !ready || !active;
     find<HTMLButtonElement>('[data-action="reload"]').disabled = !ready || !active;
     find<HTMLButtonElement>('[data-action="stop"]').disabled = !ready || active?.loadState !== 'loading';
     find<HTMLButtonElement>('[data-action="new-tab"]').disabled = !ready || !selectedAccountId;
     find('.load-status').textContent = active ? ({ loading: '加载中', ready: '页面就绪', error: '加载失败' })[active.loadState] : '无网页';
     placeholder.hidden = !!active && snapshot?.activeAccountId === selectedAccountId;
-    if (!placeholder.hidden) {
-      placeholder.innerHTML = browserEmptyState(accountTabs.length > 0, ready);
-    }
+    if (!placeholder.hidden) placeholder.innerHTML = browserEmptyState(accountTabs.length > 0, ready);
   }
+
 
   function renderConsole(): void {
     const diagnostics = (snapshot?.diagnostics ?? []).filter(item => item.id > clearedThrough && (consoleLevel === 'all' || item.level === consoleLevel)).slice(-200);
@@ -153,6 +167,12 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
   function render(): void {
     if (disposed) return;
     renderSidebar();
+    const preferences = snapshot?.settings;
+    const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+    const theme = preferences?.theme === 'system' || !preferences ? (prefersDark ? 'dark' : 'light') : preferences.theme;
+    shell.dataset.theme = theme;
+    shell.style.colorScheme = theme;
+    shell.style.zoom = preferences ? `${preferences.uiZoomPercent}%` : '100%';
     page.hidden = route === 'account';
     browser.hidden = route !== 'account';
     if (route === 'home') page.innerHTML = homePage(snapshot, ready);
@@ -206,17 +226,23 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
       render();
     } catch (error) { showLayoutError(error); }
   }
-
-  async function openDialog(kind: 'account' | 'tab'): Promise<void> {
+  async function openDialog(kind: 'account' | 'tab' | 'edit-account', accountId?: string): Promise<void> {
     if (!ready || busy || dialog.open || openingDialog) return;
     openingDialog = true;
     returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     try {
-      // Await native acknowledgement, then show the modal. CSS z-index cannot cover a child WebView.
       await layout.setVisible(false);
       if (disposed) return;
+      editingAccountId = kind === 'edit-account' ? accountId ?? null : null;
+      const editing = kind === 'edit-account';
+      const account = editing ? snapshot?.accounts.find(item => item.id === editingAccountId) : undefined;
+      const runtime = editing ? snapshot?.runtimes.find(item => item.accountId === editingAccountId) : undefined;
+      if (editing && !account) return;
       dialogKind = kind;
-      dialog.innerHTML = `<form class="dialog-form" novalidate><header><span class="eyebrow">${kind === 'account' ? 'LOCAL ACCOUNT' : 'NEW TAB'}</span><button type="button" class="icon-button" data-action="close-dialog" aria-label="取消">${icon('close')}</button></header><h2 id="dialog-title">${kind === 'account' ? '添加 Muse 账号' : '新建网页标签'}</h2><p>${kind === 'account' ? '名称用于在本地辨认账号，不是登录凭据。首次登录在原生网页中完成。' : '网页在当前账号的原生浏览资料中打开，仅支持 HTTP / HTTPS。'}</p><label for="dialog-input">${kind === 'account' ? '账号名称（必填）' : '网页地址（必填）'}</label><input id="dialog-input" name="value" ${kind === 'account' ? 'placeholder="例如：工作账号"' : 'value="https://muse.ai/"'} autocomplete="off" spellcheck="false" aria-describedby="dialog-hint dialog-error" required><small id="dialog-hint">${kind === 'account' ? '同名允许；名称不影响独立资料的存储身份。' : '也可使用 http://127.0.0.1:4317 验证本地合成站点。'}</small><p id="dialog-error" class="input-error" role="alert"></p><footer><button type="button" class="secondary" data-action="close-dialog">取消</button><button class="primary" type="submit">${kind === 'account' ? '创建账号档案' : '打开标签'}</button></footer></form>`;
+      const initialName = editing ? account!.name : '';
+      const initialNote = editing ? account!.note : '';
+      const accountDialog = kind !== 'tab';
+      dialog.innerHTML = `<form class="dialog-form" novalidate><header><span class="eyebrow">${accountDialog ? 'LOCAL ACCOUNT' : 'NEW TAB'}</span><button type="button" class="icon-button" data-action="close-dialog" aria-label="取消">${icon('close')}</button></header><h2 id="dialog-title">${editing ? '编辑账号' : accountDialog ? '添加 Muse 账号' : '新建网页标签'}</h2><p>${accountDialog ? '名称和备注保存在本地；修改不会更换此账号的浏览资料。' : '网页在当前账号的原生浏览资料中打开，仅支持 HTTP / HTTPS。'}</p><label for="dialog-input">${accountDialog ? '账号名称（必填）' : '网页地址（必填）'}</label><input id="dialog-input" name="value" ${accountDialog ? `value="${esc(initialName)}" placeholder="例如：工作账号"` : 'value="https://muse.ai/"'} autocomplete="off" spellcheck="false" aria-describedby="dialog-hint dialog-error" required>${accountDialog ? `<label for="dialog-note">备注（可选）</label><textarea id="dialog-note" name="note" maxlength="2000" rows="3" placeholder="仅用于本地辨认账号">${esc(initialNote)}</textarea>` : ''}<small id="dialog-hint">${accountDialog ? '同名允许；名称不影响独立资料的存储身份。' : '也可使用 http://127.0.0.1:4317 验证本地合成站点。'}</small><p id="dialog-error" class="input-error" role="alert"></p><footer>${editing && runtime?.lifecycle === 'background' ? '<button type="button" class="secondary" data-action="sleep-account">休眠账号</button>' : ''}${editing ? '<button type="button" class="danger-button" data-action="delete-account">删除此账号</button>' : ''}<button type="button" class="secondary" data-action="close-dialog">取消</button><button class="primary" type="submit">${editing ? '保存修改' : accountDialog ? '创建账号档案' : '打开标签'}</button></footer></form>`;
       dialog.showModal();
       find<HTMLInputElement>('#dialog-input').focus();
     } catch (error) { showLayoutError(error); }
@@ -236,11 +262,38 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
     if (!button || button.disabled || !root.contains(button)) return;
     const action = button.dataset.action;
     if (action === 'home' || action === 'dashboard' || action === 'settings') return navigatePage(action);
+    if (action === 'edit-account') return openDialog('edit-account', button.dataset.id ?? '');
     if (action === 'select-account') return selectAccount(button.dataset.id ?? '');
+    if (action === 'retry-profile-cleanup') {
+      if (!window.confirm('重试清理已从账号列表移除的暂存浏览资料？仍登记的账号资料不会被清理。')) return;
+      await perform({ type: 'retryProfileCleanup' });
+      return;
+    }
+    if (action === 'sleep-account' && editingAccountId) {
+      const account = snapshot?.accounts.find(item => item.id === editingAccountId);
+      if (!account) return;
+      if (!window.confirm(`休眠账号「${account.name}」会关闭它的全部网页标签，未保存内容可能丢失。登录资料会保留；请仅在已切换到其他账号后操作。继续？`)) return;
+      const slept = await perform({ type: 'sleepAccount', accountId: editingAccountId, automatic: false });
+      if (slept) dialog.close();
+      return;
+    }
+    if (action === 'delete-account' && editingAccountId) {
+      if (!window.confirm(`永久删除账号「${snapshot?.accounts.find(account => account.id === editingAccountId)?.name ?? '当前账号'}」及其本地浏览资料？此操作不可撤销，其他账号不会受影响。`)) return;
+      const removed = await perform({ type: 'deleteAccount', accountId: editingAccountId });
+      if (removed) dialog.close();
+      return;
+    }
     if (action === 'add-account') return openDialog('account');
     if (action === 'new-tab') {
       await openUrl('about:blank');
       address.focus();
+      return;
+    }
+    if (action === 'close-all-tabs' && selectedAccountId) {
+      if (!window.confirm('关闭当前账号的所有网页标签？未保存的网页内容可能丢失。账号及其浏览资料不会删除。')) return;
+      await layout.setVisible(false);
+      await perform({ type: 'closeAllTabs', accountId: selectedAccountId });
+      render();
       return;
     }
     if (action === 'close-dialog') { if (!busy) dialog.close(); return; }
@@ -292,12 +345,30 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
       else await openUrl(result.value);
       return;
     }
+    if (form.matches('.settings-form')) {
+      if (!ready || busy) return;
+      const field = (name: string) => form.elements.namedItem(name) as HTMLSelectElement;
+      const settings: SettingsDto = {
+        closeBehavior: field('closeBehavior').value as SettingsDto['closeBehavior'],
+        theme: field('theme').value as SettingsDto['theme'],
+        uiZoomPercent: Number(field('uiZoomPercent').value),
+        webZoomPercent: Number(field('webZoomPercent').value),
+        autoSleepMinutes: Number(field('autoSleepMinutes').value),
+      };
+      if (await perform({ type: 'updateSettings', settings })) {
+        find('.settings-save-status').textContent = '设置已保存到本机。';
+      }
+      return;
+    }
     if (!form.matches('.dialog-form') || busy) return;
     const input = find<HTMLInputElement>('#dialog-input');
-    const result = dialogKind === 'account' ? accountName(input.value) : navigationUrl(input.value);
+    const accountDialog = dialogKind !== 'tab';
+    const metadata = accountDialog ? accountMetadata(input.value, find<HTMLTextAreaElement>('#dialog-note').value) : null;
+    const navigation = dialogKind === 'tab' ? navigationUrl(input.value) : null;
     const error = find('#dialog-error');
-    if (!result.ok) {
-      error.textContent = result.message;
+    const invalid = metadata && !metadata.ok ? metadata : navigation && !navigation.ok ? navigation : null;
+    if (invalid) {
+      error.textContent = invalid.message;
       input.setAttribute('aria-invalid', 'true');
       input.focus();
       return;
@@ -306,35 +377,71 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
     error.textContent = '';
     const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
     submit.disabled = true;
-    const action: WorkspaceAction | null = dialogKind === 'account'
-      ? { type: 'createAccount', name: result.value }
-      : selectedAccountId ? { type: 'createTab', accountId: selectedAccountId, url: result.value } : null;
+    const action: WorkspaceAction | null = dialogKind === 'account' && metadata?.ok
+      ? { type: 'createAccount', name: metadata.name, note: metadata.note }
+      : dialogKind === 'edit-account' && metadata?.ok && editingAccountId
+        ? { type: 'updateAccount', accountId: editingAccountId, name: metadata.name, note: metadata.note }
+        : dialogKind === 'tab' && navigation?.ok && selectedAccountId
+          ? { type: 'createTab', accountId: selectedAccountId, url: navigation.value }
+          : null;
     const success = action ? await perform(action) : false;
     submit.disabled = false;
     if (success) dialog.close();
     else error.textContent = '操作未完成，未确认创建成功。请查看工作区错误提示后重试。';
   }
 
+  const systemTheme = window.matchMedia?.('(prefers-color-scheme: dark)');
+  const systemThemeChanged = () => { if (!snapshot || snapshot.settings.theme === 'system') render(); };
+  systemTheme?.addEventListener('change', systemThemeChanged);
   const clickHandler = (event: MouseEvent) => { void onClick(event).catch(showError); };
   const submitHandler = (event: SubmitEvent) => { void onSubmit(event).catch(showError); };
-  root.addEventListener('click', clickHandler);
-  root.addEventListener('submit', submitHandler);
-  find<HTMLSelectElement>('.console select').addEventListener('change', event => {
+  const consoleChangeHandler = (event: Event) => {
     consoleLevel = (event.target as HTMLSelectElement).value;
     renderConsole();
-  });
-  dialog.addEventListener('cancel', event => { if (busy) event.preventDefault(); });
-  dialog.addEventListener('close', () => {
+  };
+  const inputHandler = (event: Event) => {
+    const target = event.target;
+    if (target instanceof HTMLInputElement && target.matches('.account-search')) {
+      accountSearch = target.value;
+      if (!composingAccountSearch) find('.accounts').innerHTML = accountRowsMarkup();
+      return;
+    }
+    if (!(target instanceof HTMLInputElement) || target.id !== 'dialog-input' || dialogKind === 'tab') return;
+    const value = target.value.trim();
+    const duplicate = snapshot?.accounts.some(account => account.id !== editingAccountId && account.name === value);
+    find('#dialog-hint').textContent = duplicate ? '已有同名账号；仍可保存，浏览资料仍按稳定 ID 独立存储。' : '同名允许；名称不影响独立资料的存储身份。';
+  };
+  const compositionStartHandler = (event: CompositionEvent) => {
+    if ((event.target as Element).matches('.account-search')) composingAccountSearch = true;
+  };
+  const compositionEndHandler = (event: CompositionEvent) => {
+    if ((event.target as Element).matches('.account-search')) {
+      composingAccountSearch = false;
+      accountSearch = (event.target as HTMLInputElement).value;
+      find('.accounts').innerHTML = accountRowsMarkup();
+    }
+  };
+  const contextMenuHandler = (event: MouseEvent) => {
+    const row = (event.target as Element).closest<HTMLButtonElement>('.account-row');
+    if (!row || row.disabled) return;
+    event.preventDefault();
+    void openDialog('edit-account', row.dataset.id).catch(showError);
+  };
+  root.addEventListener('click', clickHandler);
+  root.addEventListener('submit', submitHandler);
+  find<HTMLSelectElement>('.console select').addEventListener('change', consoleChangeHandler);
+  root.addEventListener('input', inputHandler);
+  root.addEventListener('compositionstart', compositionStartHandler);
+  root.addEventListener('compositionend', compositionEndHandler);
+  root.addEventListener('contextmenu', contextMenuHandler);
+  const dialogCancelHandler = (event: Event) => { if (busy) event.preventDefault(); };
+  const dialogCloseHandler = () => {
     syncLayout();
     if (returnFocus?.isConnected) returnFocus.focus();
     else find<HTMLButtonElement>('.brand').focus();
-  });
-  dialog.addEventListener('input', () => {
-    if (dialogKind !== 'account') return;
-    const value = find<HTMLInputElement>('#dialog-input').value.trim();
-    const duplicate = snapshot?.accounts.some(account => account.name === value);
-    find('#dialog-hint').textContent = duplicate ? '已有同名账号；仍可创建，新的档案拥有独立身份。' : '同名允许；名称不影响独立资料的存储身份。';
-  });
+  };
+  dialog.addEventListener('cancel', dialogCancelHandler);
+  dialog.addEventListener('close', dialogCloseHandler);
 
   connection.textContent = bridge.available ? '正在连接原生运行时…' : '未连接原生运行时 · 浏览器仅展示应用壳。账号管理、网页导航和固定外链需在 Tauri 桌面应用中使用。';
   render();
@@ -361,8 +468,16 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
     disposed = true;
     root.removeEventListener('click', clickHandler);
     root.removeEventListener('submit', submitHandler);
+    root.removeEventListener('input', inputHandler);
+    root.removeEventListener('compositionstart', compositionStartHandler);
+    root.removeEventListener('compositionend', compositionEndHandler);
+    root.removeEventListener('contextmenu', contextMenuHandler);
+    find<HTMLSelectElement>('.console select').removeEventListener('change', consoleChangeHandler);
+    dialog.removeEventListener('cancel', dialogCancelHandler);
+    dialog.removeEventListener('close', dialogCloseHandler);
     window.removeEventListener('pagehide', dispose);
     bridge.dispose();
+    systemTheme?.removeEventListener('change', systemThemeChanged);
     layout.dispose();
   };
   window.addEventListener('pagehide', dispose, { once: true });

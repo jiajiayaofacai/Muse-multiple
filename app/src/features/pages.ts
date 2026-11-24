@@ -38,11 +38,17 @@ export function dashboardPage(snapshot: WorkspaceSnapshot | null): string {
 }
 
 export function settingsPage(snapshot: WorkspaceSnapshot | null): string {
-  return `<div class="page settings-page">${heading('PREFERENCES', '设置', '后续阶段接入')}
-    <p class="page-intro">以下是执行计划中的默认值与候选项。设置保存尚不可用，也不会据此自动休眠或隐藏到托盘。</p>
-    <section class="settings-card"><div class="setting-row"><div><strong>自动休眠</strong><p>计划默认 15 分钟；候选：关闭 / 5 / 15 / 30 分钟。活跃账号不自动休眠。</p></div><span class="setting-value">15 分钟 · 计划默认</span></div>
-    <div class="setting-row"><div><strong>关闭窗口</strong><p>默认退出；最小化到系统托盘为候选能力，后续阶段接入。</p></div><span class="setting-value">退出 / 托盘（候选）</span></div>
-    <div class="setting-row"><div><strong>主题与独立缩放</strong><p>计划支持跟随系统、浅色、深色；界面和网页缩放分开控制。</p></div><span class="setting-value">后续阶段接入</span></div></section>
-    <p class="settings-note">${icon('shield')}此页为只读说明，不存在“保存成功”的模拟行为。${snapshot ? ` 原生快照报告的 autoSleepMinutes：${esc(snapshot.settings.autoSleepMinutes)}（不据此承诺休眠能力）。` : ''}</p>
-    <div class="section-heading"><h2>当前功能边界</h2></div><section class="settings-card"><p class="boundary-copy">本阶段提供命名创建账号、原生网页标签与导航、完整状态快照和安全诊断。改名、删除、托盘、自动休眠与设置持久化均留待后续阶段；认证与资料隔离必须单独验收。</p></section></div>`;
+  const settings = snapshot?.settings ?? { closeBehavior: 'exit', theme: 'system', uiZoomPercent: 100, webZoomPercent: 100, autoSleepMinutes: 15 };
+  const cleanupPending = snapshot?.diagnostics.some(item => item.code === 'profile_cleanup_pending' && !snapshot.diagnostics.some(done => done.code === 'profile_cleanup_completed' && done.id > item.id)) ?? false;
+  return `<div class="page settings-page">${heading('PREFERENCES', '设置', '保存于本机账号工作区')}
+    <form class="settings-form settings-card">
+      <div class="setting-row"><div><strong>关闭窗口</strong><p>退出窗口时直接退出；选择托盘时隐藏窗口并可从托盘恢复。</p></div><select name="closeBehavior" aria-label="关闭窗口行为"><option value="exit" ${settings.closeBehavior === 'exit' ? 'selected' : ''}>退出</option><option value="tray" ${settings.closeBehavior === 'tray' ? 'selected' : ''}>最小化到托盘</option></select></div>
+      <div class="setting-row"><div><strong>主题</strong><p>界面外观偏好。</p></div><select name="theme" aria-label="主题"><option value="system" ${settings.theme === 'system' ? 'selected' : ''}>跟随系统</option><option value="light" ${settings.theme === 'light' ? 'selected' : ''}>浅色</option><option value="dark" ${settings.theme === 'dark' ? 'selected' : ''}>深色</option></select></div>
+      <div class="setting-row"><div><strong>界面缩放</strong><p>工作台壳的显示比例。</p></div><select name="uiZoomPercent" aria-label="界面缩放">${[75, 80, 90, 100, 110, 125, 150, 175, 200].map(value => `<option value="${value}" ${settings.uiZoomPercent === value ? 'selected' : ''}>${value}%</option>`).join('')}</select></div>
+      <div class="setting-row"><div><strong>网页缩放</strong><p>网页视图显示比例。</p></div><select name="webZoomPercent" aria-label="网页缩放">${[50, 75, 80, 90, 100, 110, 125, 150, 175, 200].map(value => `<option value="${value}" ${settings.webZoomPercent === value ? 'selected' : ''}>${value}%</option>`).join('')}</select></div>
+      <div class="setting-row"><div><strong>后台自动休眠</strong><p>仅无打开标签的后台账号可自动休眠；有网页时保守保留。</p></div><select name="autoSleepMinutes" aria-label="后台自动休眠"><option value="0" ${settings.autoSleepMinutes === 0 ? 'selected' : ''}>关闭</option><option value="5" ${settings.autoSleepMinutes === 5 ? 'selected' : ''}>5 分钟</option><option value="15" ${settings.autoSleepMinutes === 15 ? 'selected' : ''}>15 分钟</option><option value="30" ${settings.autoSleepMinutes === 30 ? 'selected' : ''}>30 分钟</option></select></div>
+      <footer class="settings-actions"><span class="settings-save-status" role="status"></span><button class="primary" type="submit">保存设置</button></footer>
+    </form>
+    ${cleanupPending ? '<section class="settings-card"><p>有账号浏览资料清理未完成；相关账号元数据已提交。可重试清理已移出账号列表的暂存资料。</p><button class="secondary" data-action="retry-profile-cleanup">重试资料清理</button></section>' : ''}
+    <div class="section-heading"><h2>当前功能边界</h2></div><section class="settings-card"><p class="boundary-copy">账号创建、名称与备注编辑、名称/备注搜索、原生网页标签、固定项目外链、本机设置保存、安全诊断和单账号资料删除已接入。历史按钮提交页面前进/后退请求，不显示可靠的引擎历史可用性。页面就绪不代表认证成功，真实账号隔离、第三方授权与会话恢复须单独验收。</p></section></div>`;
 }

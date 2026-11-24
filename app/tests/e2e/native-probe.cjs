@@ -36,12 +36,18 @@ if (!endpoint || !dataRoot || process.env.MUSE_M0_ALLOW_TEST_WRITES !== '1') {
   assert(!initial.diagnostics.some(entry => entry.code === 'authentication_gate_blocked'));
   assert.doesNotMatch(initial.gateStatus, /^BLOCKED/);
   passed('ordinary inline login is pending verification, not globally blocked by connector support');
+  const settingsProbe = await act({ type: 'updateSettings', settings: { ...initial.settings, theme: 'dark', uiZoomPercent: 110 } });
+  assert.equal(settingsProbe.settings.theme, 'dark');
+  assert.equal(settingsProbe.settings.uiZoomPercent, 110);
+  await act({ type: 'updateSettings', settings: initial.settings });
+  passed('settings validate and persist a synthetic theme/zoom preference');
   const accounts = [];
   for (const name of ['M0 合成 A', 'M0 合成 B']) {
-    const created = await act({ type: 'createAccount', name });
+    const created = await act({ type: 'createAccount', name, note: `备注 ${name}` });
     accounts.push(created.accounts.at(-1));
   }
   const [a, b] = accounts;
+  assert.equal(a.note, '备注 M0 合成 A');
   const newTab = async account => {
     const state = await act({ type: 'createTab', accountId: account.id, url: site });
     const tab = state.tabs.at(-1);
@@ -72,6 +78,15 @@ if (!endpoint || !dataRoot || process.env.MUSE_M0_ALLOW_TEST_WRITES !== '1') {
     return { tab, page };
   };
   const first = await newTab(a);
+  const profilePathA = path.join(dataRoot, 'profiles', a.id);
+  const renamed = await act({ type: 'updateAccount', accountId: a.id, name: 'M0 合成 A · 改名', note: '更新后的合成备注' });
+  assert.equal(renamed.accounts.find(account => account.id === a.id).name, 'M0 合成 A · 改名');
+  assert.equal(renamed.accounts.find(account => account.id === a.id).note, '更新后的合成备注');
+  assert.equal(a.id, first.tab.accountId);
+  assert((await fs.stat(profilePathA)).isDirectory());
+  const restoredName = await act({ type: 'updateAccount', accountId: a.id, name: 'M0 合成 A', note: '备注 M0 合成 A' });
+  assert.equal(restoredName.accounts.find(account => account.id === a.id).id, a.id);
+  passed('account rename/note update preserves stable ID and profile directory');
   await first.page.getByTestId('account-select').selectOption('A');
   await first.page.getByTestId('write-storage').evaluate(button => button.click());
   await first.page.waitForFunction(() => document.querySelector('[data-testid="indexeddb-value"]').textContent === 'A');
@@ -286,6 +301,38 @@ if (!endpoint || !dataRoot || process.env.MUSE_M0_ALLOW_TEST_WRITES !== '1') {
   await act({ type: 'activateAccount', accountId: a.id });
   assert.equal((await snapshot()).tabs.filter(tab => tab.accountId === a.id).length, 0);
   passed('closing the last native tab does not delete account or revive tabs');
+  const c = (await act({ type: 'createAccount', name: 'M0 合成 C', note: '生命周期测试' })).accounts.at(-1);
+  await act({ type: 'createTab', accountId: c.id, url: 'about:blank' });
+  await act({ type: 'activateAccount', accountId: b.id });
+  const asleep = await act({ type: 'sleepAccount', accountId: c.id, automatic: false });
+  assert.equal(asleep.runtimes.find(runtime => runtime.accountId === c.id).lifecycle, 'sleeping');
+  assert((await fs.stat(path.join(dataRoot, 'profiles', c.id))).isDirectory());
+  const awake = await act({ type: 'createTab', accountId: c.id, url: 'about:blank' });
+  assert.equal(awake.runtimes.find(runtime => runtime.accountId === c.id).lifecycle, 'active');
+  await act({ type: 'closeAllTabs', accountId: c.id });
+  assert.equal((await snapshot()).tabs.filter(tab => tab.accountId === c.id).length, 0);
+  assert((await fs.stat(path.join(dataRoot, 'profiles', c.id))).isDirectory());
+  let deleted = false;
+  for (let attempt = 0; attempt < 5 && !deleted; attempt++) {
+    try {
+      const deletedState = await act({ type: 'deleteAccount', accountId: c.id });
+      deleted = !deletedState.accounts.some(account => account.id === c.id);
+    } catch {
+      const stillRegistered = (await snapshot()).accounts.some(account => account.id === c.id);
+      assert(stillRegistered, 'failed deletion must retain the account record');
+      assert((await fs.stat(path.join(dataRoot, 'profiles', c.id))).isDirectory());
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+  }
+  assert(deleted, 'retry after profile handle release should remove the synthetic account');
+  const deletedSnapshot = await snapshot();
+  if (deletedSnapshot.diagnostics.some(entry => entry.code === 'profile_cleanup_pending')) {
+    await act({ type: 'retryProfileCleanup' });
+  }
+  assert(!(await snapshot()).accounts.some(account => account.id === c.id));
+  assert(!(await fs.readdir(dataRoot)).some(name => name.startsWith(`pending-profile-delete-${c.id}-`)));
+  assert((await snapshot()).accounts.some(account => account.id === b.id));
+  passed('manual sleep/wake, close-all retention, cleanup retry, and UUID-scoped deletion preserve unrelated B');
   console.log(JSON.stringify({ results, inlineLogin: 'pending-real-user-verification', connectorNewWindows: 'native-synthetic-verified', realMuseAuthentication: 'not-tested', realConnector: 'not-tested' }, null, 2));
   for (const accountBrowser of accountBrowsers.values()) await accountBrowser.close();
   await browser.close();

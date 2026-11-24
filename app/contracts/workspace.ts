@@ -7,9 +7,15 @@ export interface WorkspaceSnapshot { revision: number; accounts: AccountDto[]; t
 export interface CommandError { code: string; safeMessage: string; retryable: boolean }
 export interface ContentBounds { x: number; y: number; width: number; height: number; visible: boolean; layoutSeq: number }
 export type WorkspaceAction =
-  | { type: 'createAccount'; name: string }
+  | { type: 'createAccount'; name: string; note?: string }
   | { type: 'activateAccount'; accountId: string }
+  | { type: 'updateAccount'; accountId: string; name: string; note: string }
   | { type: 'createTab'; accountId: string; url: string }
+  | { type: 'deleteAccount'; accountId: string }
+  | { type: 'closeAllTabs'; accountId: string }
+  | { type: 'updateSettings'; settings: SettingsDto }
+  | { type: 'retryProfileCleanup' }
+  | { type: 'sleepAccount'; accountId: string; automatic?: boolean }
   | { type: 'activateTab' | 'closeTab' | 'back' | 'forward' | 'reload' | 'stop'; accountId: string; tabId: string }
   | { type: 'navigate'; accountId: string; tabId: string; url: string }
   | { type: 'openProjectLink'; kind: 'github' | 'docs' };

@@ -307,6 +307,11 @@ fn build_with_features(
             LogicalSize::new(1., 1.),
         )
         .map_err(AppError::native)?;
+    let zoom = registry::lock(app)?.snapshot.settings.web_zoom_percent;
+    if let Err(error) = view.set_zoom(f64::from(zoom) / 100.) {
+        let _ = close_inner(app, account, tab, true);
+        return Err(AppError::native(error));
+    }
     if let Err(error) = view.hide() {
         let _ = close_inner(app, account, tab, true);
         return Err(AppError::native(error));
@@ -399,6 +404,22 @@ pub(super) fn apply_layout(app: &AppHandle) -> Result<(), AppError> {
                     view.hide().map_err(AppError::native)?;
                 }
             }
+        }
+    }
+    Ok(())
+}
+
+pub(super) fn set_web_zoom(app: &AppHandle, percent: u16) -> Result<(), AppError> {
+    let tabs = registry::lock(app)?
+        .snapshot
+        .tabs
+        .iter()
+        .map(|tab| tab.id.clone())
+        .collect::<Vec<_>>();
+    for tab in tabs {
+        if let Some(view) = app.get_webview(&label(&tab)) {
+            view.set_zoom(f64::from(percent) / 100.)
+                .map_err(AppError::native)?;
         }
     }
     Ok(())

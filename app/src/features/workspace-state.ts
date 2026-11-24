@@ -6,6 +6,18 @@ export function accountName(input: string): InputResult {
   const value = input.trim();
   return value ? { ok: true, value } : { ok: false, message: '请填写账号名称，不能只输入空格。' };
 }
+export type AccountMetadataResult = { ok: true; name: string; note: string } | { ok: false; message: string };
+
+export function accountMetadata(nameInput: string, noteInput: string): AccountMetadataResult {
+  const name = nameInput.trim();
+  const note = noteInput.trim();
+  if (!name) return { ok: false, message: '请填写账号名称，不能只输入空格。' };
+  if (Array.from(name).length > 80 || /[\u0000-\u001f\u007f]/.test(name)) {
+    return { ok: false, message: '账号名称最多 80 个字符，且不能包含控制字符。' };
+  }
+  if (Array.from(note).length > 2000) return { ok: false, message: '备注最多 2000 个字符。' };
+  return { ok: true, name, note };
+}
 
 export function navigationUrl(input: string): InputResult {
   const value = input.trim();

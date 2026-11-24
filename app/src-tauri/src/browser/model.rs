@@ -41,11 +41,11 @@ pub struct Runtime {
     pub protection_reasons: Vec<String>,
 }
 
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Settings {
-    pub close_behavior: &'static str,
-    pub theme: &'static str,
+    pub close_behavior: String,
+    pub theme: String,
     pub ui_zoom_percent: u16,
     pub web_zoom_percent: u16,
     pub auto_sleep_minutes: u16,
@@ -54,11 +54,11 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            close_behavior: "exit",
-            theme: "system",
+            close_behavior: "exit".into(),
+            theme: "system".into(),
             ui_zoom_percent: 100,
             web_zoom_percent: 100,
-            auto_sleep_minutes: 0,
+            auto_sleep_minutes: 15,
         }
     }
 }
@@ -97,6 +97,20 @@ pub struct Snapshot {
 pub enum Action {
     CreateAccount {
         name: String,
+        #[serde(default)]
+        note: String,
+    },
+    UpdateAccount {
+        account_id: String,
+        name: String,
+        note: String,
+    },
+    DeleteAccount {
+        account_id: String,
+    },
+    RetryProfileCleanup,
+    UpdateSettings {
+        settings: Settings,
     },
     ActivateAccount {
         account_id: String,
@@ -112,6 +126,14 @@ pub enum Action {
     CloseTab {
         account_id: String,
         tab_id: String,
+    },
+    CloseAllTabs {
+        account_id: String,
+    },
+    SleepAccount {
+        account_id: String,
+        #[serde(default)]
+        automatic: bool,
     },
     Back {
         account_id: String,

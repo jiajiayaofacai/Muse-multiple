@@ -8,6 +8,18 @@ pub(crate) fn account_name(input: &str) -> Result<String, &'static str> {
     Ok(name.to_owned())
 }
 
+pub(crate) fn account_note(input: &str) -> Result<String, &'static str> {
+    let note = input.trim();
+    if note.chars().count() > 2000
+        || note
+            .chars()
+            .any(|c| c == '\0' || (c.is_control() && !matches!(c, '\n' | '\r' | '\t')))
+    {
+        return Err("账号备注最多 2000 个字符，且不能含控制字符");
+    }
+    Ok(note.to_owned())
+}
+
 pub(crate) fn canonical_id(input: &str) -> bool {
     let bytes = input.as_bytes();
     bytes.len() == 36
@@ -122,6 +134,16 @@ pub(crate) fn valid_bounds(
         && y + height <= window[1]
 }
 
+pub(crate) fn valid_settings(settings: &super::model::Settings) -> bool {
+    matches!(settings.close_behavior.as_str(), "exit" | "tray")
+        && matches!(settings.theme.as_str(), "system" | "light" | "dark")
+        && (75..=200).contains(&settings.ui_zoom_percent)
+        && settings.ui_zoom_percent.is_multiple_of(5)
+        && (50..=200).contains(&settings.web_zoom_percent)
+        && settings.web_zoom_percent.is_multiple_of(5)
+        && matches!(settings.auto_sleep_minutes, 0 | 5 | 15 | 30)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -135,6 +157,25 @@ mod tests {
         assert!(account_name(" \t ").is_err());
         assert!(account_name("a\nb").is_err());
         assert!(account_name(&"字".repeat(81)).is_err());
+    }
+
+    #[test]
+    fn account_notes_and_settings_are_bounded_and_explicit() {
+        assert_eq!(
+            account_note("  工作备注\n第二行  "),
+            Ok("工作备注\n第二行".into())
+        );
+        assert!(account_note(&"字".repeat(2001)).is_err());
+        assert!(account_note("坏\0备注").is_err());
+
+        let defaults = super::super::model::Settings::default();
+        assert!(valid_settings(&defaults));
+        let mut invalid = defaults.clone();
+        invalid.ui_zoom_percent = 77;
+        assert!(!valid_settings(&invalid));
+        invalid = defaults;
+        invalid.auto_sleep_minutes = 7;
+        assert!(!valid_settings(&invalid));
     }
 
     #[test]
