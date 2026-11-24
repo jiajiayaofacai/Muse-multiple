@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="zh-CN">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>M0 合成认证页</title><script src="/fixture.js" defer></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>合成认证页</title><script src="/fixture.js" defer></script></head>
 <body data-testid="popup-page">
-<h1>M0 第二源合成认证页：不是 Muse 登录</h1>
+<h1>第二源合成认证页：不是 Muse 登录</h1>
 <p>无密码、验证码输入，不记录真实凭据。两个端口是 cross-origin，不是完整跨站代理；Cookie 不按端口隔离，不能模拟所有第三方 Cookie / SameSite / HTTPS 条件。</p>
 <p>当前源：<output data-testid="current-origin"></output>；页面状态：<output data-testid="page-status" data-state="loading">loading</output></p>
 <p>合成连接器授权（不是普通登录），当前嵌套请求：<output data-testid="connection-status" data-state="not-connected">not-connected</output>。只有来源匹配的回调才标记 connected-synthetic；发送或关页本身不代表成功。</p>
@@ -25,10 +25,10 @@
 <button data-testid="clear-storage" disabled>仅清除本测试键（需确认）</button>
 <p>存储操作：<output data-testid="storage-status" data-state="idle">idle</output></p>
 <dl>
-<dt>持久 Cookie（muse_m0_cookie，1天）</dt><dd><output data-testid="cookie-value">unread</output></dd>
-<dt>localStorage（muse_m0_local）</dt><dd><output data-testid="local-value">unread</output></dd>
-<dt>sessionStorage（muse_m0_session）</dt><dd><output data-testid="session-value">unread</output></dd>
-<dt>IndexedDB（muse-m0 / identity / account）</dt><dd><output data-testid="indexeddb-value">unread</output></dd>
+<dt>持久 Cookie（合成测试键，1天）</dt><dd><output data-testid="cookie-value">unread</output></dd>
+<dt>localStorage（合成测试键）</dt><dd><output data-testid="local-value">unread</output></dd>
+<dt>sessionStorage（合成测试键）</dt><dd><output data-testid="session-value">unread</output></dd>
+<dt>IndexedDB（合成测试数据库 / identity / account）</dt><dd><output data-testid="indexeddb-value">unread</output></dd>
 </dl>
 </section>
 <section aria-label="嵌套新窗口关联">

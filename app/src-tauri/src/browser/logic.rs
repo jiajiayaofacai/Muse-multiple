@@ -52,6 +52,29 @@ pub(crate) fn allowed_url(input: &str) -> bool {
     !authority.is_empty() && !authority.contains('@') && !authority.contains('%')
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum LayoutStep<'a> {
+    SetActiveBounds(&'a str),
+    ShowActive(&'a str),
+    Hide(&'a str),
+}
+
+pub(crate) fn layout_steps<'a>(
+    tabs: &'a [String],
+    active: Option<&'a str>,
+) -> impl Iterator<Item = LayoutStep<'a>> {
+    let active = active.filter(|active| tabs.iter().any(|tab| tab == active));
+    active
+        .into_iter()
+        .flat_map(|active| {
+            [
+                LayoutStep::SetActiveBounds(active),
+                LayoutStep::ShowActive(active),
+            ]
+        })
+        .chain(inactive_tabs(tabs, active).map(LayoutStep::Hide))
+}
+
 pub(crate) fn inactive_tabs<'a>(
     tabs: &'a [String],
     active: Option<&str>,
@@ -135,11 +158,24 @@ mod tests {
     }
 
     #[test]
-    fn layout_hides_only_siblings_after_selected_view_is_shown() {
+    fn layout_sets_active_bounds_and_shows_it_before_hiding_siblings() {
         let tabs = vec![A.to_owned(), B.to_owned()];
-        assert_eq!(inactive_tabs(&tabs, Some(B)).collect::<Vec<_>>(), vec![A]);
-        assert_eq!(inactive_tabs(&tabs, Some(A)).collect::<Vec<_>>(), vec![B]);
-        assert_eq!(inactive_tabs(&tabs, None).collect::<Vec<_>>(), vec![A, B]);
+        assert_eq!(
+            layout_steps(&tabs, Some(B)).collect::<Vec<_>>(),
+            vec![
+                LayoutStep::SetActiveBounds(B),
+                LayoutStep::ShowActive(B),
+                LayoutStep::Hide(A),
+            ]
+        );
+        assert_eq!(
+            layout_steps(&tabs, None).collect::<Vec<_>>(),
+            vec![LayoutStep::Hide(A), LayoutStep::Hide(B)]
+        );
+        assert_eq!(
+            layout_steps(&tabs, Some("missing")).collect::<Vec<_>>(),
+            vec![LayoutStep::Hide(A), LayoutStep::Hide(B)]
+        );
     }
 
     #[test]

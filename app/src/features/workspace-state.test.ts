@@ -22,7 +22,7 @@ describe('账号名称', () => {
 });
 
 describe('地址输入', () => {
-  it('允许显式 http/https 和 M0 双来源测试端口', () => {
+  it('允许显式 http/https 和双来源测试端口', () => {
     expect(navigationUrl(' https://muse.ai ')).toEqual({ ok: true, value: 'https://muse.ai/' });
     expect(navigationUrl('http://127.0.0.1:4317').ok).toBe(true);
     expect(navigationUrl('http://127.0.0.1:4318').ok).toBe(true);

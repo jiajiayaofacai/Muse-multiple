@@ -377,19 +377,28 @@ pub(super) fn apply_layout(app: &AppHandle) -> Result<(), AppError> {
         }
         return Ok(());
     }
-    if let Some(view) = active.as_ref().and_then(|id| app.get_webview(&label(id))) {
-        view.set_bounds(Rect {
-            position: LogicalPosition::new(bounds.x, bounds.y).into(),
-            size: LogicalSize::new(bounds.width, bounds.height).into(),
-        })
-        .map_err(AppError::native)?;
-        view.show().map_err(AppError::native)?;
-    }
-    // Show the selected child before touching siblings, so an inactive hide error
-    // cannot leave the page selected by create_tab or navigate hidden.
-    for id in logic::inactive_tabs(&tabs, active.as_deref()) {
-        if let Some(view) = app.get_webview(&label(id)) {
-            view.hide().map_err(AppError::native)?;
+    // Apply the same ordered plan covered by the dependency-free layout regression test.
+    for step in logic::layout_steps(&tabs, active.as_deref()) {
+        match step {
+            logic::LayoutStep::SetActiveBounds(id) => {
+                if let Some(view) = app.get_webview(&label(id)) {
+                    view.set_bounds(Rect {
+                        position: LogicalPosition::new(bounds.x, bounds.y).into(),
+                        size: LogicalSize::new(bounds.width, bounds.height).into(),
+                    })
+                    .map_err(AppError::native)?;
+                }
+            }
+            logic::LayoutStep::ShowActive(id) => {
+                if let Some(view) = app.get_webview(&label(id)) {
+                    view.show().map_err(AppError::native)?;
+                }
+            }
+            logic::LayoutStep::Hide(id) => {
+                if let Some(view) = app.get_webview(&label(id)) {
+                    view.hide().map_err(AppError::native)?;
+                }
+            }
         }
     }
     Ok(())

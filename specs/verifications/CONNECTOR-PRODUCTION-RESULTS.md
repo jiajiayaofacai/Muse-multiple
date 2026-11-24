@@ -82,3 +82,13 @@ HTTPS/Secure/HttpOnly、跨站Cookie、COOP/noopener/named target策略、永久
 - 启动诊断：首次Tauri CLI并行构建依赖时出现E0463（darling/displaydoc），单线程重试出现E0463（phf）；检查确认Cargo target配置在`X:/BuildCache/Cargo`，早先手动启动的是另一个旧项目target二进制。之后用正确target、仅本次命令覆写空beforeDevCommand以复用已有Vite启动；当前窗口存活、响应、可见且没有可见cmd窗口。启动前端时的HMR可能刷新工作台页面；真实登录动作仍由用户执行，真实Muse页面及登录结果未检查。
 - 本轮最后查询：专用测试host已结束；本地Vite1420与loopback合成服务4317/4318仍在运行；真实Muse登录/授权未测试。
 M0真实认证闸门没有解除，M1—M6、安装包和自动发布未在本轮实现。手工验收见[M0清单](M0-MANUAL.md)。
+
+
+## 2026-11-24 用户追加文案、图标与启动反馈
+
+- 用户可见界面、窗口/HTML标题和app README标题中不再显示“M0原生验证”阶段标识。登录有效性仍以“未验证/需人工验收”等事实说明表达，不显示替代阶段口号。
+- 指定截图原图保存在`app/src-tauri/icons/source.jpeg`，与`X:\Users\17854\Downloads\屏幕截图_24-11-2026_195449_www.ithome.com.jpeg` SHA256一致。生成1024×1024 PNG和含16/24/32/48/64/128/256尺寸的ICO；完整图像等比居中于浅色方形画布，无裁切。`bundle.icon`引用PNG/ICO；`setup`用Tauri安全`default_window_icon()`显式设置shell窗口图标。
+- 本轮未运行Cargo、Tauri CLI或原生启动。因而图标仅验证源文件哈希、输出尺寸、配置JSON和源码API接线；PE资源、release产物及窗口图标外观没有本轮运行证据。`bundle.active=false`仍维持，debug build曾编译通过不等于图标已运行实测。
+- 前端typecheck、lint、54项TS测试、Vite build通过；Rust fmt、Clippy、`cargo test --lib --locked -j 1` 27项与`cargo build --locked -j 1`通过，target为`X:/BuildCache/Cargo`。全量cargo test运行完库测试后，执行main零测试harness被Windows以“拒绝访问”(OS error 5)拒绝，故全量命令不算通过。此前Release构建遇`E0463 windows_core`，未验证Release。
+- 启动故障根因仍未确认：本轮读取不到匹配的Windows Application crash event，之前控制台输出为空。debug二进制入口为Console subsystem，命令行启动会关联控制台；Release源码设置GUI subsystem，但Release构建失败。本轮未用改动启动程序。Cargo target为`X:/BuildCache/Cargo`，不要把同名旧位置`app/src-tauri/target`二进制当作最新构建。
+- 本轮最后检查没有Muse-multiple进程或1420/4317/4318/9224监听端口；启动的Vite和合成站点已停止。未读取账号浏览资料，未打开真实Muse、未输入凭据。

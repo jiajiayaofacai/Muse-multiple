@@ -1,6 +1,7 @@
 # M0：本地合成站点与原生手工验收
 
-> 当前更新：除之前的连接器原生矩阵外，本轮在全新scratch资料补测了“点击＋创建about:blank、无网址弹窗、地址栏输入合成URL、DOM正文与原生viewport可见”；详见[正式接入结果](CONNECTOR-PRODUCTION-RESULTS.md)。真实Muse登录和第三方授权仍待用户验收。
+> 当前更新：此前原生空白标签16项和rust测试27项为合成隔离结果；本轮加入截图图标和移除界面阶段标记，TypeScript54项与前端构建通过，Cargo fmt/Clippy/库测试及debug build通过。整套Cargo test在lib测试结束后无法启动main harness（OS error 5），Release build仍因E0463未验证；真实Muse认证仍待人工验收。
+> 当前更新（2026-11-24）：界面文案已去掉“M0原生验证”阶段标识，窗口与HTML标题为“Muse-multiple”；用户截图已转换并配置PNG/ICO。TypeScript54项通过，Rust库27项和debug build通过；完整Cargo test harness遇OS error 5，Release仍未构建。真实Muse登录/授权尚未测试。
 
 ## 先验收普通原页登录（2026-11-23更正）
 

@@ -48,3 +48,12 @@ describe('登录与外部授权基线文案', () => {
     expect(html).not.toContain('>已登录<');
   });
 });
+describe('阶段标记文案', () => {
+  it('首页和仪表盘不显示内部阶段编号，保留真实验证说明', () => {
+    const home = homePage(snapshot, true);
+    const dashboard = dashboardPage(snapshot);
+    expect(home + dashboard).not.toMatch(/M0/i);
+    expect(home).toContain('真实登录、第三方授权、账号隔离与重启恢复仍需实测');
+    expect(dashboard).toContain('不代表真实 Muse 认证与免重复登录已验证');
+  });
+});

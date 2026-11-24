@@ -79,6 +79,9 @@ pub fn run() {
             {
                 window = window.additional_browser_args("--remote-debugging-port=9224");
             }
+            if let Some(icon) = app.default_window_icon() {
+                window = window.icon(icon.clone())?;
+            }
             let shell = window.build()?;
             shell.show()?;
             shell.unminimize()?;
