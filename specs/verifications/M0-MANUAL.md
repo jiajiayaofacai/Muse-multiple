@@ -1,10 +1,7 @@
 # M0：本地合成站点与原生手工验收
 
-> 2026-11-25 更新：M1–M6 源码实现本轮完成并进入统一验证。前端 typecheck/lint/build、55项单测、HTTP站点8项、Edge连接器夹具4项通过；Rust fmt/Clippy、31项库测试与Debug/Release编译通过；隔离原生合成探测19项通过；MSI与NSIS包已生成。完整 `cargo test` 的main harness因Windows链接器无法访问共享target exe（LNK1104/OS error 5）未通过；独立X盘target也遇Windows OS error 5。本记录不表示安装包已安装验收或真实Muse登录/连接器已验证。
-> 本轮统一验证补充（2026-11-25）：在独立 scratch 资料目录和本地合成站运行更新后的原生探测19/19通过，覆盖备注/改名保持UUID、设置读写、A/B profile隔离、创建about:blank并导航、同窗popup/opener/自关闭/嵌套/取消、远程workspace命令拒绝、后台手动休眠后唤醒、关闭全部保留profile、单账号删除不影响B。没有连接真实Muse账号。前端55、站点8、Edge夹具4、Rust库31均通过；Rust fmt/Clippy、Debug/Release编译通过。完整cargo test在main harness链接时失败（LNK1104/OS error 5）；scratch和独立X盘target重试分别遭DLL文件占用和build-helper拒绝访问。MSI/NSIS包已生成，尚未实际安装启动。
-
+> MSI-only 复审/复测（2026-11-25）：bundle 配置仅含 MSI，指定配置/文档复审通过。前端、合成站点、Rust格式/Clippy/完整cargo test（31项，main/doc各0）/build及MSI bundle均通过。安装启动、真实Muse A/B隔离、会话恢复、连接器服务仍未验收。
 ## 先验收普通原页登录（2026-11-23更正）
-
 | ID | 由用户在原生工作台操作 | 判据 | 实际 |
 | --- | --- | --- | --- |
 | INLINE-1 | 用户报告已在 A 的原始 Muse 页面输入邮箱和验证码并看到登录成功 | 记为用户报告的单账号人工结果；代理不读取页面/凭据；不代表 A/B 隔离、A→B→A、会话恢复或重新认证已验证 | 用户报告成功；其它项待测 |

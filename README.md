@@ -2,7 +2,7 @@
 
 使用 **Rust + Tauri + TypeScript** 开发的 Muse for Meta（muse.ai）多账号图形化工作台项目。
 
-**当前阶段：M1–M6 功能已实现并完成大部分统一验证。** 前端与合成检查、隔离原生探测、Rust库测试、Debug/Release编译及 MSI/NSIS 生成通过；完整 Rust 测试 harness 仍受 Windows 文件访问错误阻断，安装启动和真实 Muse 账号验收待完成。用户报告的单账号登录不等于 A/B 隔离或恢复已通过。
+**当前阶段：M1–M6 功能已实现；本轮按“仅 MSI”范围审查并复测通过。** 前端、合成站点、Rust 全套测试/Clippy/格式检查、Release 构建和 MSI 生成通过。MSI 尚未实际安装启动；真实 Muse A/B 隔离、会话恢复及连接器服务仍待人工验收。
 
 ## 项目入口
 

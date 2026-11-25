@@ -24,16 +24,16 @@ cargo run --locked
 
 ## Windows 安装包
 
-当前 Tauri bundle 配置目标为 MSI 与 NSIS。构建需在 Windows 上使用已配置 Rust/Cargo 工具链：
+本项目只生成 Windows MSI 安装包。构建需在 Windows 上使用已配置 Rust/Cargo 工具链：
 
 ```powershell
 npm --prefix app ci
 Push-Location app
-npm run tauri -- build
+npm run tauri -- build --bundles msi
 Pop-Location
 ```
 
-生成包的位置和构建成功与否必须以命令输出为准。Release 构建及安装包仍需在完整质量门通过后实际验证；bundle 配置不等同已发布或已安装。
+生成的 MSI 位置与构建成功与否以命令输出为准。MSI 已能构建；实际安装和启动仍须验收。
 
 ## 当前功能
 
@@ -56,7 +56,7 @@ Pop-Location
 
 ## 合成站点与统一验证
 
-> 统一验证结果（2026-11-25）：前端 typecheck/lint/build、55项单测、HTTP站点8项、Edge连接器夹具4项通过；Rust fmt/Clippy及31项库测试通过。完整cargo test的main harness遇Windows共享target链接器文件占用/拒绝访问，scratch与独立X盘target也分别遇OS error 32/5。Release编译与MSI/NSIS包生成通过；安装启动未验。隔离native-probe 19/19通过。真实Muse A/B、恢复、连接器服务仍待用户验收。
+> 本轮 MSI-only 审查/复测结果（2026-11-25）：typecheck、lint、前端55项单测、HTTP站点8项、连接器夹具4项、前端build通过；cargo fmt --check、Clippy、cargo test --locked（31项通过、main/doc各0项）、cargo build --locked通过；MSI-only bundle成功。MSI尚未安装启动。真实Muse A/B、会话恢复和真实连接器验收未测。
 ```powershell
 npm --prefix app run typecheck
 npm --prefix app run lint
@@ -80,6 +80,6 @@ Pop-Location
 
 - Windows 是首发验证平台；macOS/Linux 尚未验证。
 - 窗口托盘、关闭策略、休眠、删除恢复及固定外链的实际桌面行为需在统一验收中验证。
-- Debug/Release 编译以及 MSI/NSIS 包生成通过；安装包尚未实际安装启动，完整 `cargo test` 的 main harness 受 Windows 链接器文件访问错误阻断。
+- Debug/Release 编译与 MSI 生成通过；MSI 尚未实际安装启动，完整 `cargo test` 的 main harness 受 Windows 链接器文件访问错误阻断。
 - 真实 Muse 双账号隔离、重启恢复、注销/删除影响及第三方授权仍需用户手动验收。
 - 四个 Windows 同窗连接器依赖的固定版本本地 Cargo 补丁、许可证、来源哈希和回滚方式见 [vendor 维护说明](src-tauri/vendor/README.md)。

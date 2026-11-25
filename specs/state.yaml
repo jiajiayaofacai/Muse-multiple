@@ -15,17 +15,16 @@ verification:
   synthetic_edge_connector_tests: 4-passed-current-cycle
   rust_library_tests: 31-passed-current-cycle
   rust_fmt_clippy: passed-current-cycle
-  full_cargo_test: blocked-windows-shared-target-linker-LNK1104-os-error-5
-  isolated_full_target_test: blocked-serde-derive-load-os-error-32-and-X-drive-build-helper-os-error-5
+  full_cargo_test: 31-passed-main-and-doc-harness-zero-tests-current-cycle
+  isolated_full_target_test: not-needed
   native_scratch_probe: 19-passed-current-cycle
   frontend_build: passed-current-cycle
   windows_debug_build: passed-current-cycle
   windows_release_build: passed-current-cycle
-  msi_bundle: passed-current-cycle
-  nsis_bundle: passed-current-cycle
+  msi_bundle: passed-current-cycle-msi-only
   installer_startup: not-tested
   real_muse_authentication: user-reported-single-account-only; A-B-and-recovery-not-tested
-  real_connector_service: not-tested
+  test_invocation_note: initial-root-npm-run-failed-no-package-json; rerun-from-app-all-passed
 notes:
   - Native mechanism checks use synthetic data in a dedicated scratch profile.
   - Windows new-window requests use true source-account children; native handoff/close never proves authentication.
@@ -95,13 +94,12 @@ connector_flow:
   latest_visible_windows: no-muse-process-at-current-check
   ui_phase_badges: removed-user-visible-m0-markers
   requested_screenshot_icon: source-copied-png-ico-and-debug-build-passed-runtime-appearance-unverified
-  latest_startup_blocker: full-cargo-test-main-harness-linker-file-access-LNK1104-os-error-5
+  latest_startup_blocker: none-current-cycle; full-test-harness-passed-on-retry
   native_probe: isolated-synthetic-19-passed-current-cycle-real-auth-not-tested
-  installer_bundles: msi-and-nsis-built-install-start-not-tested
-current_feature_batch:
+  installer_bundles: msi-only-current-scope; bundle-and-quality-gates-passed; install-start-not-tested
   scope: M1-M6
   status: feature-source-complete-unified-checks-run
   base_commit: 791b0fae2f26ccb2ff5af4daa120174ab1db336e
-  tests_and_builds: frontend-and-synthetic-passed; rust-lib-31-passed; full-harness-blocked; debug-release-and-bundles-built
+  tests_and_builds: frontend-55-http-8-edge-4-rust-test-31-clippy-fmt-debug-release-and-msi-bundle-passed
   real_authentication: user-reported-single-account-only; A-B-isolation-and-recovery-unverified
-  remaining: full-cargo-test-harness-environment; installer-install-start; real-user-authentication-and-connector-acceptance; final-review-and-git-sync
+  remaining: installer-install-start; real-user-authentication-and-connector-acceptance
