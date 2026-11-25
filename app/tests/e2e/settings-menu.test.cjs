@@ -98,5 +98,13 @@ test('settings update and proxy form, and account-scoped dropdown', async t => {
   await expect(host).toHaveValue('https://secure-proxy.example:7161');
   await expect(protocol).toHaveValue('https');
   await expect(page.getByRole('spinbutton', { name: '代理端口' })).toHaveValue('');
+  await host.fill('');
+  const savedActions = await page.evaluate(() => window.testActions.length);
+  await save.click();
+  await expect(page.locator('.settings-save-status')).toContainText('请填写有效');
+  assert.equal(await page.evaluate(() => window.testActions.length), savedActions);
+  await host.fill('https://secure-proxy.example:7161');
+  await save.click();
+  await expect(page.locator('.settings-save-status')).toContainText('已保存');
   assert.deepEqual(errors, []);
 });
