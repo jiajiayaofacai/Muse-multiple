@@ -145,13 +145,13 @@ pub(crate) fn valid_settings(settings: &super::model::Settings) -> bool {
         && ((!settings.proxy.enabled
             && settings.proxy.host.is_empty()
             && settings.proxy.port == 0
-            && matches!(settings.proxy.scheme.as_str(), "http" | "socks5"))
+            && matches!(settings.proxy.scheme.as_str(), "http" | "https" | "socks5"))
             || proxy_server(&settings.proxy).is_some())
 }
 
 pub(crate) fn proxy_server(proxy: &super::model::ProxySettings) -> Option<String> {
     use std::net::IpAddr;
-    if !matches!(proxy.scheme.as_str(), "http" | "socks5") || proxy.port == 0 {
+    if !matches!(proxy.scheme.as_str(), "http" | "https" | "socks5") || proxy.port == 0 {
         return None;
     }
     let host = if let Ok(address) = proxy.host.parse::<IpAddr>() {
@@ -399,6 +399,19 @@ mod proxy_tests {
         assert!(proxy_server(&proxy("host.test", 0)).is_none());
         assert!(proxy_server(&proxy("host.test", 65535)).is_some());
 
+        let https = ProxySettings {
+            scheme: "https".into(),
+            ..proxy("secure-proxy.example", 7161)
+        };
+        assert!(valid_settings(&Settings {
+            proxy: https.clone(),
+            ..Settings::default()
+        }));
+        assert!(
+            browser_args(&https, false)
+                .unwrap()
+                .ends_with(" --proxy-server=https://secure-proxy.example:7161")
+        );
         let args = browser_args(&proxy("proxy.example", 80), true).unwrap();
         assert_eq!(
             args,

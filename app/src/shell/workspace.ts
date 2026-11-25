@@ -4,6 +4,7 @@ import { NativeLayout } from '../bridge/layout';
 import { accountMetadata, acceptSnapshot, navigationUrl, sessionLabels } from '../features/workspace-state';
 import { dashboardPage, homePage, settingsPage } from '../features/pages';
 import { accountRequestNotice, accountTabStrip, browserEmptyState } from '../features/browser-content';
+import { parseProxyEndpoint } from '../features/proxy-settings';
 import { checkLatestRelease } from '../features/update';
 import { accountMenuModel, attachAccountMenu } from './account-menu';
 import { escapeHtml as esc, icon } from '../ui/markup';
@@ -401,23 +402,27 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
     if (form.matches('.settings-form')) {
       if (!ready || busy) return;
       const field = (name: string) => form.elements.namedItem(name) as HTMLSelectElement;
+      const proxyEnabled = (form.elements.namedItem('proxyEnabled') as HTMLInputElement).checked;
+      const scheme = field('proxyScheme').value as SettingsDto['proxy']['scheme'];
+      const host = field('proxyHost').value.trim();
+      const port = (form.elements.namedItem('proxyPort') as HTMLInputElement).value.trim();
+      const parsedProxy = proxyEnabled || host || port ? parseProxyEndpoint(scheme, host, port) : null;
+      if (parsedProxy?.ok && host.includes('://')) {
+        field('proxyScheme').value = parsedProxy.value.scheme;
+        (form.elements.namedItem('proxyPort') as HTMLInputElement).value = '';
+      }
+      if (parsedProxy && !parsedProxy.ok) {
+        find('.settings-save-status').textContent = parsedProxy.message;
+        return;
+      }
       const settings: SettingsDto = {
         closeBehavior: field('closeBehavior').value as SettingsDto['closeBehavior'],
         theme: field('theme').value as SettingsDto['theme'],
         uiZoomPercent: Number(field('uiZoomPercent').value),
         webZoomPercent: Number(field('webZoomPercent').value),
         autoSleepMinutes: Number(field('autoSleepMinutes').value),
-        proxy: {
-          enabled: (form.elements.namedItem('proxyEnabled') as HTMLInputElement).checked,
-          scheme: field('proxyScheme').value as SettingsDto['proxy']['scheme'],
-          host: field('proxyHost').value.trim(),
-          port: Number(field('proxyPort').value),
-        },
+        proxy: parsedProxy?.ok ? { ...parsedProxy.value, enabled: proxyEnabled } : { enabled: false, scheme, host: '', port: 0 },
       };
-      if (settings.proxy.enabled && (!settings.proxy.host || !Number.isInteger(settings.proxy.port) || settings.proxy.port < 1 || settings.proxy.port > 65535)) {
-        find('.settings-save-status').textContent = '请填写有效的代理主机和 1–65535 端口。';
-        return;
-      }
       if (await perform({ type: 'updateSettings', settings })) {
         find('.settings-save-status').textContent = '设置已保存到本机。';
       }

@@ -1,7 +1,7 @@
 export interface AccountDto { id: string; name: string; note: string; lastUsedAt: number }
 export interface TabDto { id: string; accountId: string; openerTabId: string | null; purpose: 'normal' | 'authentication'; title: string; displayUrl: string; loadState: 'loading' | 'ready' | 'error'; canGoBack: boolean; canGoForward: boolean }
 export interface RuntimeDto { accountId: string; lifecycle: 'unopened' | 'active' | 'background' | 'sleeping'; sessionStatus: 'unknown' | 'authenticating' | 'reauthRequired'; activeTabId: string | null; protectionReasons: string[] }
-export interface ProxySettingsDto { enabled: boolean; scheme: 'http' | 'socks5'; host: string; port: number }
+export interface ProxySettingsDto { enabled: boolean; scheme: 'http' | 'https' | 'socks5'; host: string; port: number }
 export interface SettingsDto { closeBehavior: 'exit' | 'tray'; theme: 'system' | 'light' | 'dark'; uiZoomPercent: number; webZoomPercent: number; autoSleepMinutes: number; proxy: ProxySettingsDto }
 export interface DiagnosticDto { id: number; timestamp: number; level: 'info' | 'warn' | 'error'; accountId: string | null; code: string; safeMessage: string }
 export interface WorkspaceSnapshot { revision: number; accounts: AccountDto[]; tabs: TabDto[]; runtimes: RuntimeDto[]; settings: SettingsDto; diagnostics: DiagnosticDto[]; activeAccountId: string | null; gateStatus: string }
