@@ -142,6 +142,42 @@ pub(crate) fn valid_settings(settings: &super::model::Settings) -> bool {
         && (50..=200).contains(&settings.web_zoom_percent)
         && settings.web_zoom_percent.is_multiple_of(5)
         && matches!(settings.auto_sleep_minutes, 0 | 5 | 15 | 30)
+        && ((!settings.proxy.enabled
+            && settings.proxy.host.is_empty()
+            && settings.proxy.port == 0
+            && matches!(settings.proxy.scheme.as_str(), "http" | "socks5"))
+            || proxy_server(&settings.proxy).is_some())
+}
+
+pub(crate) fn proxy_server(proxy: &super::model::ProxySettings) -> Option<String> {
+    use std::net::IpAddr;
+    if !matches!(proxy.scheme.as_str(), "http" | "socks5") || proxy.port == 0 {
+        return None;
+    }
+    let host = if let Ok(address) = proxy.host.parse::<IpAddr>() {
+        match address {
+            IpAddr::V4(_) => proxy.host.clone(),
+            IpAddr::V6(_) => format!("[{}]", proxy.host),
+        }
+    } else {
+        let host = proxy.host.strip_suffix('.').unwrap_or(&proxy.host);
+        if host.is_empty()
+            || host.len() > 253
+            || !host.split('.').all(|label| {
+                !label.is_empty()
+                    && label.len() <= 63
+                    && label.as_bytes()[0].is_ascii_alphanumeric()
+                    && label.as_bytes()[label.len() - 1].is_ascii_alphanumeric()
+                    && label
+                        .bytes()
+                        .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+            })
+        {
+            return None;
+        }
+        host.to_owned()
+    };
+    Some(format!("{}://{}:{}", proxy.scheme, host, proxy.port))
 }
 
 #[cfg(test)]
@@ -295,5 +331,91 @@ mod tests {
             2,
             Some(1)
         ));
+    }
+}
+
+pub(crate) fn browser_args(proxy: &super::model::ProxySettings, debug: bool) -> Option<String> {
+    let server = if proxy.enabled {
+        Some(proxy_server(proxy)?)
+    } else {
+        None
+    };
+    if server.is_none() && !debug {
+        return None;
+    }
+    let mut args = String::from(
+        "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required",
+    );
+    if let Some(server) = server {
+        args.push_str(" --proxy-server=");
+        args.push_str(&server);
+    }
+    if debug {
+        args.push_str(" --remote-debugging-port=0");
+    }
+    Some(args)
+}
+
+#[cfg(test)]
+mod proxy_tests {
+    use super::*;
+    use crate::browser::model::{ProxySettings, Settings};
+
+    fn proxy(host: &str, port: u16) -> ProxySettings {
+        ProxySettings {
+            enabled: true,
+            scheme: "http".into(),
+            host: host.into(),
+            port,
+        }
+    }
+
+    #[test]
+    fn proxy_validation_and_webview2_arguments_are_strict_and_complete() {
+        assert_eq!(
+            proxy_server(&proxy("proxy.example", 80)).as_deref(),
+            Some("http://proxy.example:80")
+        );
+        assert_eq!(
+            proxy_server(&proxy("192.0.2.1", 8080)).as_deref(),
+            Some("http://192.0.2.1:8080")
+        );
+        assert_eq!(
+            proxy_server(&proxy("2001:db8::1", 443)).as_deref(),
+            Some("http://[2001:db8::1]:443")
+        );
+        for host in [
+            "",
+            "-bad.test",
+            "bad-.test",
+            "bad..test",
+            "user@host",
+            "host/path",
+            "bad_host",
+            "2001:db8:::1",
+        ] {
+            assert!(proxy_server(&proxy(host, 8080)).is_none(), "{host}");
+        }
+        assert!(proxy_server(&proxy("host.test", 0)).is_none());
+        assert!(proxy_server(&proxy("host.test", 65535)).is_some());
+
+        let args = browser_args(&proxy("proxy.example", 80), true).unwrap();
+        assert_eq!(
+            args,
+            "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required --proxy-server=http://proxy.example:80 --remote-debugging-port=0"
+        );
+        assert!(browser_args(&ProxySettings::default(), false).is_none());
+        assert!(browser_args(&proxy("host.test --evil", 80), false).is_none());
+
+        let invalid = Settings {
+            proxy: proxy("host.test", 0),
+            ..Settings::default()
+        };
+        assert!(!valid_settings(&invalid));
+        let invalid = Settings {
+            auto_sleep_minutes: 7,
+            ..Settings::default()
+        };
+        assert!(!valid_settings(&invalid));
     }
 }

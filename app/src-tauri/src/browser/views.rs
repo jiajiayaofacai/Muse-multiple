@@ -271,6 +271,14 @@ fn build_with_features(
         });
     #[cfg(windows)]
     let builder = {
+        let debug =
+            cfg!(debug_assertions) && std::env::var("MUSE_MULTIPLE_M0_DEBUG").as_deref() == Ok("1");
+        match logic::browser_args(&state.startup_proxy, debug) {
+            Some(args) => builder.additional_browser_args(&args),
+            None => builder,
+        }
+    };
+    let builder = {
         let close_account = account.to_owned();
         let close_tab = tab.to_owned();
         let builder = builder.on_close_requested(move |view| {
@@ -289,13 +297,6 @@ fn build_with_features(
     };
     #[cfg(not(windows))]
     let _ = features;
-    let builder = if cfg!(debug_assertions)
-        && std::env::var("MUSE_MULTIPLE_M0_DEBUG").as_deref() == Ok("1")
-    {
-        builder.additional_browser_args("--remote-debugging-port=0")
-    } else {
-        builder
-    };
     let window = app
         .get_window("shell")
         .ok_or_else(|| AppError::new("shell_missing", "工作台窗口不存在"))?;

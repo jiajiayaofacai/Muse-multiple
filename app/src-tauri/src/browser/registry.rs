@@ -11,6 +11,9 @@ const LOGIN_VERIFICATION_PENDING: &str = "原页登录待验收：电话/邮箱�
 
 pub(super) struct BrowserState {
     pub root: PathBuf,
+    // Keep environment options consistent for all tabs sharing a profile until restart.
+    #[cfg(windows)]
+    pub startup_proxy: ProxySettings,
     pub _instance_lock: std::fs::File,
     pub registry: Mutex<Registry>,
     // Never hold the registry mutex while entering a native API (callbacks may reenter).

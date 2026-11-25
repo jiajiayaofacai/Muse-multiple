@@ -4,6 +4,8 @@ import { NativeLayout } from '../bridge/layout';
 import { accountMetadata, acceptSnapshot, navigationUrl, sessionLabels } from '../features/workspace-state';
 import { dashboardPage, homePage, settingsPage } from '../features/pages';
 import { accountRequestNotice, accountTabStrip, browserEmptyState } from '../features/browser-content';
+import { checkLatestRelease } from '../features/update';
+import { accountMenuModel, attachAccountMenu } from './account-menu';
 import { escapeHtml as esc, icon } from '../ui/markup';
 import './workspace.css';
 
@@ -29,11 +31,13 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
   let accountSearch = '';
   let dialogKind: 'account' | 'tab' | 'edit-account' = 'account';
   let editingAccountId: string | null = null;
+  let updateStatus = '等待检查';
+  let checkingUpdates = false;
 
   root.innerHTML = `<div class="workspace-shell">
     <header class="topbar"><button class="brand" data-action="home" aria-label="Muse-multiple 首页"><span class="brand-mark">M</span><span>Muse<span class="brand-light">-multiple</span></span></button>
       <nav class="top-actions" aria-label="工作台工具"><button data-action="dashboard" class="top-link" title="查看工作台运行快照">${icon('dashboard')}仪表盘</button><button data-action="console" class="top-link" aria-expanded="false" aria-controls="workspace-console" title="查看脱敏原生诊断">${icon('terminal')}控制台</button><span class="top-divider"></span><button data-action="docs" class="top-link" disabled title="通过受限原生接口打开项目使用文档">${icon('book')}使用文档</button><button data-action="github" class="top-link" disabled title="通过受限原生接口打开项目 GitHub">GitHub ${icon('external')}</button></nav></header>
-    <aside class="sidebar" aria-label="主导航"></aside>
+    <aside class="sidebar" aria-label="主导航"><div id="account-menu" class="account-menu" role="menu" hidden></div></aside>
     <main class="workspace"><div class="connection-banner" role="status"></div><div class="error-banner" role="alert" hidden><span></span><button data-action="dismiss-error" class="icon-button" aria-label="关闭错误提示">${icon('close')}</button></div>
       <section class="page-view" aria-label="工作区"></section>
       <section class="browser-view" aria-label="原生网页工作区" hidden>
@@ -66,6 +70,7 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
   const connection = find('.connection-banner');
   const errorBanner = find('.error-banner');
   const layout = new NativeLayout(slot, bounds => bridge.layout(bounds), showLayoutError);
+  const accountMenu = attachAccountMenu(sidebar, id => accountMenuModel(snapshot, id));
 
   function showError(error: unknown): void {
     if (disposed) return;
@@ -117,19 +122,22 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
     return `${visibleAccounts.map(account => {
       const isSelected = account.id === selected;
       const runtime = snapshot?.runtimes.find(item => item.accountId === account.id);
-      return `<div class="account-item"><button class="account-row ${isSelected ? 'active' : ''}" data-action="select-account" data-id="${esc(account.id)}" title="${esc(account.name)}${isSelected ? ' · 当前账号' : ''}" ${ready ? '' : 'disabled'} ${isSelected ? 'aria-current="page"' : ''}><span class="avatar">${esc(Array.from(account.name)[0] ?? 'M')}</span><span class="account-copy"><span class="account-name">${esc(account.name)}</span>${account.note ? `<small class="account-note">${esc(account.note)}</small>` : ''}${isSelected ? `<small>${runtime ? sessionLabels[runtime.sessionStatus] : '登录状态未验证'}</small>` : ''}</span>${isSelected ? '<span class="current-label">当前</span>' : ''}</button><button class="icon-button account-edit" data-action="edit-account" data-id="${esc(account.id)}" aria-label="编辑 ${esc(account.name)} 的名称和备注" title="编辑名称和备注" ${ready ? '' : 'disabled'}>${icon('settings')}</button></div>`;
+      return `<div class="account-item"><button class="account-row ${isSelected ? 'active' : ''}" data-action="select-account" data-id="${esc(account.id)}" title="${esc(account.name)}${isSelected ? ' · 当前账号' : ''}" ${ready ? '' : 'disabled'} ${isSelected ? 'aria-current="page"' : ''}><span class="avatar">${esc(Array.from(account.name)[0] ?? 'M')}</span><span class="account-copy"><span class="account-name">${esc(account.name)}</span>${account.note ? `<small class="account-note">${esc(account.note)}</small>` : ''}${isSelected ? `<small>${runtime ? sessionLabels[runtime.sessionStatus] : '登录状态未验证'}</small>` : ''}</span>${isSelected ? '<span class="current-label">当前</span>' : ''}</button><button class="icon-button account-menu-trigger" data-action="account-menu" data-id="${esc(account.id)}" aria-label="${esc(account.name)} 的账号操作" aria-haspopup="menu" aria-expanded="false" title="账号操作" ${ready ? '' : 'disabled'}>${icon('settings')}</button></div>`;
     }).join('')}${accounts.length && !visibleAccounts.length ? '<p class="sidebar-empty">没有匹配的账号</p>' : ''}${!accounts.length ? `<p class="sidebar-empty">${snapshot ? '尚无账号档案' : '等待原生连接'}</p>` : ''}`;
   }
 
   function renderSidebar(): void {
     if (composingAccountSearch && document.activeElement === sidebar.querySelector('.account-search')) return;
     const accounts = snapshot?.accounts ?? [];
+    const menu = find<HTMLElement>('#account-menu');
     sidebar.innerHTML = `<button class="nav-button ${route === 'home' ? 'active' : ''}" data-action="home" ${route === 'home' ? 'aria-current="page"' : ''} title="首页">${icon('home')}<span class="nav-label">首页</span></button>
       <div class="account-group"><button class="group-toggle" data-action="toggle-accounts" aria-expanded="${accountsExpanded}" aria-controls="account-list"><span class="group-chevron ${accountsExpanded ? 'expanded' : ''}">${icon('chevron')}</span><span class="nav-label">对话 / 账号</span><span class="nav-count">${snapshot ? accounts.length : '—'}</span></button>
       ${accounts.length ? `<input class="account-search" aria-label="搜索账号名称或备注" placeholder="搜索账号" value="${esc(accountSearch)}">` : ''}
       <div id="account-list" class="accounts">${accountRowsMarkup()}</div></div>
       <button class="nav-button add-nav" data-action="add-account" title="添加 Muse 账号${ready ? '' : '（需连接原生运行时）'}" ${ready ? '' : 'disabled'}>${icon('plus')}<span class="nav-label">添加 Muse 账号</span></button>
       <div class="sidebar-bottom"><button class="nav-button ${route === 'settings' ? 'active' : ''}" data-action="settings" ${route === 'settings' ? 'aria-current="page"' : ''} title="设置：管理工作台偏好">${icon('settings')}<span class="nav-label">设置</span></button><button class="nav-button collapse-button" data-action="collapse-sidebar" title="展开或收起侧栏" aria-label="展开或收起侧栏" aria-expanded="${!shell.classList.contains('compact')}">${icon('panel')}<span class="nav-label">收起侧栏</span></button></div>`;
+    sidebar.append(menu);
+    accountMenu.refresh();
   }
 
   function renderBrowser(): void {
@@ -177,7 +185,12 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
     browser.hidden = route !== 'account';
     if (route === 'home') page.innerHTML = homePage(snapshot, ready);
     if (route === 'dashboard') page.innerHTML = dashboardPage(snapshot);
-    if (route === 'settings') page.innerHTML = settingsPage(snapshot);
+    if (route === 'settings') {
+      page.innerHTML = settingsPage(snapshot, updateStatus);
+      page.querySelector('.update-status')?.setAttribute('id', 'update-status');
+      const check = page.querySelector<HTMLButtonElement>('[data-action="check-updates"]');
+      if (check) check.disabled = !snapshot || checkingUpdates;
+    }
     renderBrowser();
     find<HTMLButtonElement>('.top-actions [data-action="dashboard"]').classList.toggle('active', route === 'dashboard');
     for (const kind of ['docs', 'github']) {
@@ -204,6 +217,30 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
       root.setAttribute('aria-busy', 'false');
     }
   }
+
+  async function checkForUpdates(): Promise<void> {
+    if (checkingUpdates) return;
+    checkingUpdates = true;
+    updateStatus = '正在检查 GitHub Releases…';
+    const statusNode = updateStatusNode();
+    if (statusNode) statusNode.textContent = updateStatus;
+    updateButton()?.setAttribute('disabled', '');
+    try {
+      updateStatus = await checkLatestRelease();
+    } catch {
+      updateStatus = '检查更新失败，请稍后重试。';
+    } finally {
+      checkingUpdates = false;
+      if (!disposed) {
+        const statusNode = updateStatusNode();
+        if (statusNode) statusNode.textContent = updateStatus;
+        updateButton()?.removeAttribute('disabled');
+      }
+    }
+  }
+
+  function updateStatusNode(): HTMLElement | null { return page.querySelector('#update-status'); }
+  function updateButton(): HTMLButtonElement | null { return page.querySelector<HTMLButtonElement>('[data-action="check-updates"]'); }
 
   async function navigatePage(next: Route): Promise<void> {
     if (busy || openingDialog) return;
@@ -269,6 +306,20 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
       await perform({ type: 'retryProfileCleanup' });
       return;
     }
+    if (action === 'account-menu') return;
+    if (button.closest('#account-menu') && button.dataset.action) {
+      const id = button.dataset.id;
+      const model = id ? accountMenuModel(snapshot, id) : null;
+      accountMenu.close();
+      if (!model || !id) return;
+      if (action === 'open-account') return selectAccount(id);
+      if (action === 'edit-account') return openDialog('edit-account', id);
+      if (action === 'refresh-account' && model.tab) { await perform({ type: 'reload', accountId: id, tabId: model.tab.id }); return; }
+      if (action === 'close-account-tabs' && window.confirm(`关闭「${model.account.name}」的全部网页标签？账号及浏览资料会保留。`)) { await perform({ type: 'closeAllTabs', accountId: id }); return; }
+      if (action === 'sleep-account' && window.confirm(`休眠后台账号「${model.account.name}」会关闭它的全部网页标签，登录资料保留。继续？`)) { await perform({ type: 'sleepAccount', accountId: id, automatic: false }); return; }
+      if (action === 'delete-account' && window.confirm(`永久删除账号「${model.account.name}」及其本地浏览资料？此操作不可撤销，其他账号不会受影响。`)) { await perform({ type: 'deleteAccount', accountId: id }); return; }
+      return;
+    }
     if (action === 'sleep-account' && editingAccountId) {
       const account = snapshot?.accounts.find(item => item.id === editingAccountId);
       if (!account) return;
@@ -318,6 +369,8 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
     if (action === 'collapse-sidebar') { shell.classList.toggle('compact'); renderSidebar(); layout.schedule(); return; }
     if (action === 'docs' || action === 'github') { await perform({ type: 'openProjectLink', kind: action }); return; }
     if (action === 'open-muse') return openUrl('https://muse.ai/');
+    if (action === 'check-updates') { await checkForUpdates(); return; }
+    if (action === 'open-releases') { await perform({ type: 'openProjectLink', kind: 'releases' }); return; }
     if (action === 'test-parent') return openUrl('http://127.0.0.1:4317');
     if (action === 'test-auth') return openUrl('http://127.0.0.1:4318');
     if (!selectedAccountId) return;
@@ -354,7 +407,17 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
         uiZoomPercent: Number(field('uiZoomPercent').value),
         webZoomPercent: Number(field('webZoomPercent').value),
         autoSleepMinutes: Number(field('autoSleepMinutes').value),
+        proxy: {
+          enabled: (form.elements.namedItem('proxyEnabled') as HTMLInputElement).checked,
+          scheme: field('proxyScheme').value as SettingsDto['proxy']['scheme'],
+          host: field('proxyHost').value.trim(),
+          port: Number(field('proxyPort').value),
+        },
       };
+      if (settings.proxy.enabled && (!settings.proxy.host || !Number.isInteger(settings.proxy.port) || settings.proxy.port < 1 || settings.proxy.port > 65535)) {
+        find('.settings-save-status').textContent = '请填写有效的代理主机和 1–65535 端口。';
+        return;
+      }
       if (await perform({ type: 'updateSettings', settings })) {
         find('.settings-save-status').textContent = '设置已保存到本机。';
       }
@@ -421,19 +484,12 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
       find('.accounts').innerHTML = accountRowsMarkup();
     }
   };
-  const contextMenuHandler = (event: MouseEvent) => {
-    const row = (event.target as Element).closest<HTMLButtonElement>('.account-row');
-    if (!row || row.disabled) return;
-    event.preventDefault();
-    void openDialog('edit-account', row.dataset.id).catch(showError);
-  };
   root.addEventListener('click', clickHandler);
   root.addEventListener('submit', submitHandler);
   find<HTMLSelectElement>('.console select').addEventListener('change', consoleChangeHandler);
   root.addEventListener('input', inputHandler);
   root.addEventListener('compositionstart', compositionStartHandler);
   root.addEventListener('compositionend', compositionEndHandler);
-  root.addEventListener('contextmenu', contextMenuHandler);
   const dialogCancelHandler = (event: Event) => { if (busy) event.preventDefault(); };
   const dialogCloseHandler = () => {
     syncLayout();
@@ -454,6 +510,7 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
       connection.hidden = true;
       connection.classList.add('connected');
       render();
+      void checkForUpdates();
     }
   } catch (error) {
     ready = false;
@@ -471,7 +528,6 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
     root.removeEventListener('input', inputHandler);
     root.removeEventListener('compositionstart', compositionStartHandler);
     root.removeEventListener('compositionend', compositionEndHandler);
-    root.removeEventListener('contextmenu', contextMenuHandler);
     find<HTMLSelectElement>('.console select').removeEventListener('change', consoleChangeHandler);
     dialog.removeEventListener('cancel', dialogCancelHandler);
     dialog.removeEventListener('close', dialogCloseHandler);
@@ -479,6 +535,7 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
     bridge.dispose();
     systemTheme?.removeEventListener('change', systemThemeChanged);
     layout.dispose();
+    accountMenu.dispose();
   };
   window.addEventListener('pagehide', dispose, { once: true });
   return dispose;

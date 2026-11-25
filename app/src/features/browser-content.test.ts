@@ -6,7 +6,7 @@ const state = (): WorkspaceSnapshot => ({
   revision: 7,
   accounts: ['a', 'b'].map(id => ({ id, name: id.toUpperCase(), note: '', lastUsedAt: 0 })),
   tabs: [], runtimes: [], diagnostics: [], activeAccountId: 'a', gateStatus: 'connected',
-  settings: { closeBehavior: 'exit', theme: 'system', uiZoomPercent: 100, webZoomPercent: 100, autoSleepMinutes: 15 },
+  settings: { closeBehavior: 'exit', theme: 'system', uiZoomPercent: 100, webZoomPercent: 100, autoSleepMinutes: 15, proxy: { enabled: false, scheme: 'http', host: '', port: 0 } },
 });
 const tab: TabDto = {
   id: 'tab-a', accountId: 'a', openerTabId: null, purpose: 'normal', title: 'Muse',

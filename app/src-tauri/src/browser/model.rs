@@ -43,12 +43,42 @@ pub struct Runtime {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ProxySettings {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default = "default_proxy_scheme")]
+    pub scheme: String,
+    #[serde(default)]
+    pub host: String,
+    #[serde(default)]
+    pub port: u16,
+}
+
+fn default_proxy_scheme() -> String {
+    "http".into()
+}
+
+impl Default for ProxySettings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            scheme: default_proxy_scheme(),
+            host: String::new(),
+            port: 0,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Settings {
     pub close_behavior: String,
     pub theme: String,
     pub ui_zoom_percent: u16,
     pub web_zoom_percent: u16,
     pub auto_sleep_minutes: u16,
+    #[serde(default)]
+    pub proxy: ProxySettings,
 }
 
 impl Default for Settings {
@@ -59,6 +89,7 @@ impl Default for Settings {
             ui_zoom_percent: 100,
             web_zoom_percent: 100,
             auto_sleep_minutes: 15,
+            proxy: ProxySettings::default(),
         }
     }
 }
@@ -143,6 +174,9 @@ pub enum Action {
         account_id: String,
         tab_id: String,
     },
+    OpenProjectLink {
+        kind: ProjectLink,
+    },
     Reload {
         account_id: String,
         tab_id: String,
@@ -156,9 +190,6 @@ pub enum Action {
         tab_id: String,
         url: String,
     },
-    OpenProjectLink {
-        kind: ProjectLink,
-    },
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -166,8 +197,8 @@ pub enum Action {
 pub enum ProjectLink {
     Github,
     Docs,
+    Releases,
 }
-
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ContentBounds {
@@ -218,3 +249,26 @@ impl std::fmt::Display for AppError {
     }
 }
 impl std::error::Error for AppError {}
+
+#[cfg(test)]
+mod proxy_compat_tests {
+    use super::*;
+
+    #[test]
+    fn settings_without_proxy_migrate_to_disabled_proxy_defaults() {
+        let settings: Settings = serde_json::from_str(
+            r#"{"closeBehavior":"exit","theme":"system","uiZoomPercent":100,"webZoomPercent":100,"autoSleepMinutes":15}"#,
+        )
+        .unwrap();
+        assert!(!settings.proxy.enabled);
+        assert_eq!(settings.proxy.scheme, "http");
+        assert!(settings.proxy.host.is_empty());
+        assert_eq!(settings.proxy.port, 0);
+        assert!(
+            serde_json::from_str::<ProxySettings>(
+                r#"{"enabled":true,"scheme":"http","host":"localhost","port":80,"bypass":"*"}"#
+            )
+            .is_err()
+        );
+    }
+}

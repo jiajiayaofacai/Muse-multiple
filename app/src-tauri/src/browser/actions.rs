@@ -192,6 +192,7 @@ fn open_project_link(kind: ProjectLink) -> Result<(), AppError> {
         ProjectLink::Docs => {
             "https://github.com/jiajiayaofacai/Muse-multiple/blob/main/app/README.md"
         }
+        ProjectLink::Releases => "https://github.com/jiajiayaofacai/Muse-multiple/releases",
     };
     std::process::Command::new("rundll32.exe")
         .args(["url.dll,FileProtocolHandler", url])

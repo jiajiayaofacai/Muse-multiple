@@ -37,6 +37,8 @@ pub fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let accounts = storage::load(&root)?;
     let pending_deletions = storage::recover_pending_profile_deletions(&root, &accounts);
     let settings = storage::load_settings(&root)?;
+    #[cfg(windows)]
+    let startup_proxy = settings.proxy.clone();
     let mut registry = Registry::with_settings(accounts, settings);
     if pending_deletions > 0 {
         registry.diagnostic(
@@ -48,6 +50,8 @@ pub fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     app.manage(BrowserState {
         _instance_lock: instance_lock,
         root,
+        #[cfg(windows)]
+        startup_proxy,
         registry: Mutex::new(registry),
         operation: Mutex::new(()),
     });

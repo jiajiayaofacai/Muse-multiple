@@ -5,7 +5,7 @@ import { accountName, navigationUrl, acceptSnapshot, workspaceCounts, accountNew
 const snapshot = (revision: number): WorkspaceSnapshot => ({
   revision, accounts: [], tabs: [], runtimes: [], diagnostics: [], activeAccountId: null,
   gateStatus: 'pending',
-  settings: { closeBehavior: 'exit', theme: 'system', uiZoomPercent: 100, webZoomPercent: 100, autoSleepMinutes: 15 },
+  settings: { closeBehavior: 'exit', theme: 'system', uiZoomPercent: 100, webZoomPercent: 100, autoSleepMinutes: 15, proxy: { enabled: false, scheme: 'http', host: '', port: 0 } },
 });
 
 describe('账号名称', () => {

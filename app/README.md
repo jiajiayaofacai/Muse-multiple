@@ -40,8 +40,9 @@ Pop-Location
 - 创建本地账号档案；支持改名、备注、名称/备注搜索。
 - 每账号独立原生网页标签；新建、单个关闭、关闭该账号全部标签、地址导航、后退/前进、刷新与停止。
 - 仪表盘与独立诊断控制台；诊断不记录网页输入、凭据或聊天内容。
-- 本机偏好保存：主题、界面/网页缩放、关闭行为和后台自动休眠分钟数。
-- 固定 GitHub/使用文档链接由本地壳通过 Windows 固定系统 URL 处理器打开，不接受远程网页提供的任意 URL；进程启动成功不代表浏览器导航已完成。
+- 本机偏好保存：主题、界面/网页缩放、关闭行为、后台自动休眠、账号网页 HTTP CONNECT / SOCKS5 代理，以及启动和手动检查 GitHub 正式版更新。
+- 代理仅用于新建账号 WebView2 环境；保存后须退出并重启工作台，不重建或关闭现有标签，不修改系统代理，不保存代理凭据。更新检查仅比较固定 GitHub Releases API 的版本号；未配置 MSI 更新签名，不自动下载或安装，发布页需用户手动查看。
+- 固定 GitHub/使用文档/发布页链接由本地壳通过 Windows 固定系统 URL 处理器打开，不接受远程网页提供的任意 URL；进程启动成功不代表浏览器导航已完成。
 
 关闭行为默认退出；选择托盘后隐藏主窗，可从托盘恢复或退出。若托盘初始化失败，本次运行回退为关闭退出并记录诊断。托盘点击/恢复仍需在目标 Windows 桌面环境验收。
 
@@ -56,7 +57,7 @@ Pop-Location
 
 ## 合成站点与统一验证
 
-> 本轮 MSI-only 审查/复测结果（2026-11-25）：typecheck、lint、前端55项单测、HTTP站点8项、连接器夹具4项、前端build通过；cargo fmt --check、Clippy、cargo test --locked（31项通过、main/doc各0项）、cargo build --locked通过；MSI-only bundle成功。MSI尚未安装启动。真实Muse A/B、会话恢复和真实连接器验收未测。
+> 本轮更新、代理与账号菜单变更验证结果另行记录；此处 M1–M6 历史基线为 typecheck、lint、前端55项、HTTP8项、连接器4项、前端build通过；cargo fmt、Clippy、cargo test（31项），MSI-only bundle成功。MSI安装启动与真实Muse账号验证未声称完成。
 ```powershell
 npm --prefix app run typecheck
 npm --prefix app run lint
@@ -80,6 +81,5 @@ Pop-Location
 
 - Windows 是首发验证平台；macOS/Linux 尚未验证。
 - 窗口托盘、关闭策略、休眠、删除恢复及固定外链的实际桌面行为需在统一验收中验证。
-- Debug/Release 编译与 MSI 生成通过；MSI 尚未实际安装启动，完整 `cargo test` 的 main harness 受 Windows 链接器文件访问错误阻断。
-- 真实 Muse 双账号隔离、重启恢复、注销/删除影响及第三方授权仍需用户手动验收。
+- Debug/Release 编译与 MSI 生成曾通过；本轮改动的 MSI 需重新构建。真实安装启动、真实 Muse 双账号隔离、重启恢复、注销/删除影响及第三方授权仍需用户手动验收。
 - 四个 Windows 同窗连接器依赖的固定版本本地 Cargo 补丁、许可证、来源哈希和回滚方式见 [vendor 维护说明](src-tauri/vendor/README.md)。

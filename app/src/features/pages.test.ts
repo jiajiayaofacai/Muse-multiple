@@ -5,7 +5,7 @@ import { dashboardPage, homePage } from './pages';
 const snapshot: WorkspaceSnapshot = {
   revision: 1, accounts: [], tabs: [], runtimes: [], diagnostics: [], activeAccountId: null,
   gateStatus: '任意后端说明，不是登录或连接成功信号',
-  settings: { closeBehavior: 'exit', theme: 'system', uiZoomPercent: 100, webZoomPercent: 100, autoSleepMinutes: 15 },
+  settings: { closeBehavior: 'exit', theme: 'system', uiZoomPercent: 100, webZoomPercent: 100, autoSleepMinutes: 15, proxy: { enabled: false, scheme: 'http', host: '', port: 0 } },
 };
 
 describe('登录与外部授权基线文案', () => {
