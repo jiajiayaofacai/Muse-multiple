@@ -1,4 +1,4 @@
-# Muse-multiple
+# Muse-multiple Muse多账号管理工作台
 
 使用 **Rust + Tauri + TypeScript** 开发的 Muse for Meta（muse.ai）多账号图形化工作台项目。
 
