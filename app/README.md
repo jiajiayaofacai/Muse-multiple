@@ -63,6 +63,8 @@ Pop-Location
 npm --prefix app run typecheck
 npm --prefix app run lint
 npm --prefix app run test
+npm --prefix app run test:coverage
+# 覆盖率门槛：语句和分支均为 80%。
 npm --prefix app run test:sites
 npm --prefix app run test:connectors
 npm --prefix app run build

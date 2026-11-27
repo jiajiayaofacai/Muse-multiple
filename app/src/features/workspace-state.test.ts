@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { WorkspaceSnapshot } from '../../contracts/workspace';
-import { accountName, navigationUrl, acceptSnapshot, workspaceCounts, accountNewWindowDiagnostic } from './workspace-state';
+import { accountMetadata, accountName, navigationUrl, acceptSnapshot, workspaceCounts, accountNewWindowDiagnostic } from './workspace-state';
 
 const snapshot = (revision: number): WorkspaceSnapshot => ({
   revision, accounts: [], tabs: [], runtimes: [], diagnostics: [], activeAccountId: null,
@@ -143,5 +143,23 @@ describe('账号新窗口受限诊断', () => {
       expect(accountNewWindowDiagnostic(accepted, 'a')?.id).toBe(2);
     }
     expect(accountNewWindowDiagnostic(acceptSnapshot(current, snapshot(6)), 'a')).toBeNull();
+  });
+});
+describe('账号元数据校验', () => {
+  it('修剪名称与备注，并按 Unicode 字符数允许上限值', () => {
+    const name = '😀'.repeat(80);
+    const note = '备'.repeat(2000);
+    expect(accountMetadata(` ${name} `, ` ${note} `)).toEqual({ ok: true, name, note });
+  });
+
+  it.each([
+    ['', '备注', '请填写账号名称'],
+    ['名称\n注入', '', '控制字符'],
+    ['😀'.repeat(81), '', '最多 80 个字符'],
+    ['名称', '备'.repeat(2001), '备注最多 2000 个字符'],
+  ])('拒绝非法名称或备注：%s', (name, note, expected) => {
+    const result = accountMetadata(name, note);
+    expect(result).toMatchObject({ ok: false });
+    if (!result.ok) expect(result.message).toContain(expected);
   });
 });

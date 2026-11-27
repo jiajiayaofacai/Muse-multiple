@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { WorkspaceSnapshot } from '../../contracts/workspace';
-import { dashboardPage, homePage } from './pages';
+import { dashboardPage, homePage, settingsPage } from './pages';
 
 const snapshot: WorkspaceSnapshot = {
   revision: 1, accounts: [], tabs: [], runtimes: [], diagnostics: [], activeAccountId: null,
@@ -72,5 +72,31 @@ describe('账号状态显示位置', () => {
     expect(dashboard).toContain('会话状态');
     expect(dashboard).toContain('登录状态未验证');
     expect(home + dashboard).not.toMatch(/参考接口|非官方/);
+  });
+});
+describe('设置页', () => {
+  it('无原生快照时使用默认设置并禁用远程更新操作', () => {
+    const html = settingsPage(null, '离线');
+    expect(html).toContain('name="closeBehavior"');
+    expect(html).toContain('name="theme"');
+    expect(html).toContain('name="autoSleepMinutes"');
+    expect(html).toContain('离线');
+    expect(html).toContain('data-action="check-updates" disabled');
+    expect(html).not.toContain('重试资料清理');
+  });
+
+  it('显示已保存设置与待重试清理状态，完成事件取消提示', () => {
+    const withPending = {
+      ...snapshot,
+      settings: { ...snapshot.settings, closeBehavior: 'tray' as const, theme: 'dark' as const, uiZoomPercent: 125, webZoomPercent: 150, autoSleepMinutes: 5, proxy: { enabled: true, scheme: 'https' as const, host: 'proxy.example', port: 443 } },
+      diagnostics: [{ id: 2, timestamp: 0, level: 'warn' as const, accountId: null, code: 'profile_cleanup_pending', safeMessage: 'pending' }],
+    };
+    expect(settingsPage(withPending)).toContain('重试资料清理');
+    const pendingHtml = settingsPage(withPending);
+    expect(pendingHtml).toContain('value="proxy.example"');
+    expect(pendingHtml).toContain('value="443"');
+    expect(pendingHtml).toContain('option value="https" selected');
+    const completed = { ...withPending, diagnostics: [...withPending.diagnostics, { id: 3, timestamp: 1, level: 'info' as const, accountId: null, code: 'profile_cleanup_completed', safeMessage: 'done' }] };
+    expect(settingsPage(completed)).not.toContain('重试资料清理');
   });
 });
