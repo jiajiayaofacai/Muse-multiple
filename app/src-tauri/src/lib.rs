@@ -2,6 +2,8 @@
 
 use tauri::Manager;
 mod browser;
+#[cfg(windows)]
+mod single_instance;
 
 fn trusted_shell(label: &str, url: &tauri::Url) -> bool {
     if label != "shell" {
@@ -71,7 +73,7 @@ async fn workspace_layout_begin(
 }
 
 fn restore_window(app: &tauri::AppHandle) {
-    if let Some(window) = app.get_webview_window("shell") {
+    if let Some(window) = app.get_window("shell") {
         let _ = window.show();
         let _ = window.unminimize();
         let _ = window.set_focus();
@@ -116,10 +118,20 @@ fn install_tray(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>
 }
 
 pub fn run() {
+    let context = tauri::generate_context!();
+    #[cfg(windows)]
+    let (_owner, wake) = match single_instance::claim(&context.config().identifier) {
+        Ok(Some(events)) => events,
+        Ok(None) => return,
+        Err(error) => {
+            eprintln!("无法检查已有工作台：{error}");
+            return;
+        }
+    };
     let result = tauri::Builder::default()
-        .setup(|app| {
+        .setup(move |app| {
             let config = &app.config().app.windows[0];
-            let mut window = tauri::WebviewWindowBuilder::from_config(app, config)?;
+            let mut window = tauri::WebviewWindowBuilder::from_config(app, config)?.visible(false);
             if cfg!(debug_assertions)
                 && std::env::var("MUSE_MULTIPLE_M0_DEBUG").as_deref() == Ok("1")
             {
@@ -129,12 +141,13 @@ pub fn run() {
                 window = window.icon(icon.clone())?;
             }
             let shell = window.build()?;
-            shell.show()?;
-            shell.unminimize()?;
             browser::install(app)?;
             if install_tray(app.handle()).is_err() {
                 browser::tray_unavailable(app.handle());
             }
+            #[cfg(windows)]
+            single_instance::listen(wake, app.handle().clone())?;
+            shell.show()?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -143,7 +156,7 @@ pub fn run() {
             workspace_layout,
             workspace_layout_begin
         ])
-        .run(tauri::generate_context!());
+        .run(context);
     if let Err(error) = result {
         eprintln!("无法启动 Muse-multiple：{error}");
     }
