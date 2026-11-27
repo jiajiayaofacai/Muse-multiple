@@ -1,6 +1,16 @@
-# Muse-multiple
+# Muse-multiple Muse多账号管理工作台
 
 使用 **Rust + Tauri + TypeScript** 开发的 Muse for Meta（muse.ai）多账号图形化工作台项目。
+
+## 程序界面
+
+以下截图使用合成账号与状态数据；“账号工作区”显示空标签状态。截图不含真实 Muse 网页、账号资料或登录信息。
+
+| 首页 | 仪表盘 |
+| --- | --- |
+| ![工作台首页](docs/screenshots/home.png) | ![账号仪表盘](docs/screenshots/dashboard.png) |
+| 账号工作区 | 设置 |
+| ![账号工作区空标签状态](docs/screenshots/account-workspace.png) | ![工作台设置](docs/screenshots/settings.png) |
 
 **当前阶段：M1–M6 功能已实现；本轮按“仅 MSI”范围审查并复测通过。** 前端、合成站点、Rust 全套测试/Clippy/格式检查、Release 构建和 MSI 生成通过。MSI 尚未实际安装启动；真实 Muse A/B 隔离、会话恢复及连接器服务仍待人工验收。
 
