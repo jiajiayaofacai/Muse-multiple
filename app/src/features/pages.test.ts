@@ -1,0 +1,102 @@
+import { describe, expect, it } from 'vitest';
+import type { WorkspaceSnapshot } from '../../contracts/workspace';
+import { dashboardPage, homePage, settingsPage } from './pages';
+
+const snapshot: WorkspaceSnapshot = {
+  revision: 1, accounts: [], tabs: [], runtimes: [], diagnostics: [], activeAccountId: null,
+  gateStatus: '任意后端说明，不是登录或连接成功信号',
+  settings: { closeBehavior: 'exit', theme: 'system', uiZoomPercent: 100, webZoomPercent: 100, autoSleepMinutes: 15, proxy: { enabled: false, scheme: 'http', host: '', port: 0 } },
+};
+
+describe('登录与外部授权基线文案', () => {
+  it('首页区分原页电话/邮箱、验证码、两步验证与连接应用的新标签', () => {
+    const html = homePage(snapshot, true);
+    expect(html).toContain('电话/邮箱');
+    expect(html).toContain('验证码');
+    expect(html).toContain('两步验证');
+    expect(html).toContain('原标签');
+    expect(html).toContain('连接第三方应用');
+    expect(html).toContain('新标签');
+    expect(html).toContain('普通外链');
+    expect(html).toContain('来源账号内的新标签');
+    expect(html).toContain('可能自动关闭');
+    expect(html).toContain('结果以 Muse 原页为准');
+    expect(html).toContain('普通外链也在来源账号内打开标签');
+    expect(html).not.toMatch(/当前仍受限|尚不支持|一律阻止|预期自动关闭/);
+    expect(html).not.toContain('同窗认证');
+  });
+
+  it('仪表盘保留原始 gateStatus 说明但不解析为成功，明确普通登录不以前置弹窗为条件', () => {
+    const html = dashboardPage(snapshot);
+    expect(html).toContain(snapshot.gateStatus);
+    expect(html).toContain('原标签');
+    expect(html).toContain('外部授权');
+    expect(html).toContain('不以弹窗能力为前置条件');
+    expect(html).toContain('不代表连接成功');
+    expect(html).toContain('来源账号内的新标签');
+    expect(html).toContain('可能自动关闭');
+    expect(html).toContain('结果以 Muse 原页为准');
+    expect(html).toContain('普通外链也在来源账号内打开标签');
+    expect(html).not.toMatch(/当前仍受限|尚不支持|一律阻止|预期自动关闭/);
+    expect(html).not.toContain('包含正常页和认证页');
+  });
+
+  it('未连接原生时仍保留原页登录说明，不显示假账号或成功状态', () => {
+    const html = homePage(null, false);
+    expect(html).toContain('原标签');
+    expect(html).toContain('等待原生工作区连接');
+    expect(html).not.toContain('>已登录<');
+  });
+});
+describe('阶段标记文案', () => {
+  it('首页和仪表盘不显示内部阶段编号，保留真实验证说明', () => {
+    const home = homePage(snapshot, true);
+    const dashboard = dashboardPage(snapshot);
+    expect(home + dashboard).not.toMatch(/M0/i);
+    expect(home).toContain('真实登录、第三方授权、账号隔离与重启恢复仍需实测');
+    expect(dashboard).toContain('不代表真实 Muse 认证与免重复登录已验证');
+  });
+});
+const accountStatusSnapshot: WorkspaceSnapshot = {
+  ...snapshot,
+  accounts: [{ id: 'a', name: 'A', note: '', lastUsedAt: 0 }],
+  runtimes: [{ accountId: 'a', lifecycle: 'active', sessionStatus: 'unknown', activeTabId: null, protectionReasons: [] }],
+};
+
+describe('账号状态显示位置', () => {
+  it('首页不显示会话状态，仪表盘显示且不标注参考接口非官方', () => {
+    const home = homePage(accountStatusSnapshot, true);
+    const dashboard = dashboardPage(accountStatusSnapshot);
+
+    expect(home).not.toContain('登录状态未验证');
+    expect(dashboard).toContain('会话状态');
+    expect(dashboard).toContain('登录状态未验证');
+    expect(home + dashboard).not.toMatch(/参考接口|非官方/);
+  });
+});
+describe('设置页', () => {
+  it('无原生快照时使用默认设置并禁用远程更新操作', () => {
+    const html = settingsPage(null, '离线');
+    expect(html).toContain('name="closeBehavior"');
+    expect(html).toContain('name="theme"');
+    expect(html).toContain('name="autoSleepMinutes"');
+    expect(html).toContain('离线');
+    expect(html).toContain('data-action="check-updates" disabled');
+    expect(html).not.toContain('重试资料清理');
+  });
+
+  it('显示已保存设置与待重试清理状态，完成事件取消提示', () => {
+    const withPending = {
+      ...snapshot,
+      settings: { ...snapshot.settings, closeBehavior: 'tray' as const, theme: 'dark' as const, uiZoomPercent: 125, webZoomPercent: 150, autoSleepMinutes: 5, proxy: { enabled: true, scheme: 'https' as const, host: 'proxy.example', port: 443 } },
+      diagnostics: [{ id: 2, timestamp: 0, level: 'warn' as const, accountId: null, code: 'profile_cleanup_pending', safeMessage: 'pending' }],
+    };
+    expect(settingsPage(withPending)).toContain('重试资料清理');
+    const pendingHtml = settingsPage(withPending);
+    expect(pendingHtml).toContain('value="proxy.example"');
+    expect(pendingHtml).toContain('value="443"');
+    expect(pendingHtml).toContain('option value="https" selected');
+    const completed = { ...withPending, diagnostics: [...withPending.diagnostics, { id: 3, timestamp: 1, level: 'info' as const, accountId: null, code: 'profile_cleanup_completed', safeMessage: 'done' }] };
+    expect(settingsPage(completed)).not.toContain('重试资料清理');
+  });
+});

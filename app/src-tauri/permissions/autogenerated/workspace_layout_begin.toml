@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workspace-layout-begin"
+description = "Enables the workspace_layout_begin command without any pre-configured scope."
+commands.allow = ["workspace_layout_begin"]
+
+[[permission]]
+identifier = "deny-workspace-layout-begin"
+description = "Denies the workspace_layout_begin command without any pre-configured scope."
+commands.deny = ["workspace_layout_begin"]

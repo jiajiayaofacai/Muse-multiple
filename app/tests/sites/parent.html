@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>合成父站</title><script src="/fixture.js" defer></script></head>
+<body data-testid="parent-page">
+<h1>合成父站：不是 Muse 登录</h1>
+<p>仅写入固定的合成账号 A/B，无密码、验证码输入，不记录真实凭据。两个端口是 cross-origin，不是完整跨站代理；Cookie 不按端口隔离，不能模拟所有第三方 Cookie / SameSite / HTTPS 条件。</p>
+<p>当前源：<output data-testid="current-origin"></output>；页面状态：<output data-testid="page-status" data-state="loading">loading</output></p>
+<p>合成连接器授权（不是普通登录），当前请求：<output data-testid="connection-status" data-state="not-connected">not-connected</output>。只有来源匹配的回调才标记 connected-synthetic；关页本身不代表成功。</p>
+<section aria-label="合成存储">
+<h2>浏览资料与标签存储</h2>
+<label>合成账号 <select data-testid="account-select"><option>A</option><option>B</option></select></label>
+<label>当前标签标记 <select data-testid="tab-select"><option>T1</option><option>T2</option><option>T3</option></select></label>
+<button data-testid="write-storage" disabled>写入四类存储</button>
+<button data-testid="write-session" disabled>只改本标签 sessionStorage</button>
+<button data-testid="read-storage" disabled>读取本页存储</button>
+<button data-testid="clear-storage" disabled>仅清除本测试键（需确认）</button>
+<p>存储操作：<output data-testid="storage-status" data-state="idle">idle</output></p>
+<dl>
+<dt>持久 Cookie（合成测试键，1天）</dt><dd><output data-testid="cookie-value">unread</output></dd>
+<dt>localStorage（合成测试键）</dt><dd><output data-testid="local-value">unread</output></dd>
+<dt>sessionStorage（合成测试键）</dt><dd><output data-testid="session-value">unread</output></dd>
+<dt>IndexedDB（合成测试数据库 / identity / account）</dt><dd><output data-testid="indexeddb-value">unread</output></dd>
+</dl>
+<button data-testid="open-tab" disabled>真实 window.open 同源父页（同 profile 多标签）</button>
+<p>新标签：<output data-testid="tab-open-status" data-state="idle">idle</output>。带 opener 新标签可能初始复制 sessionStorage；打开后分别写 T1/T2 验证后续不共享，不能把初始复制误报为串号。</p>
+</section>
+<section aria-label="认证新窗口关联">
+<h2>真实新窗口探测</h2>
+<button data-testid="open-popup" disabled>window.open 第二源合成认证页（可重复）</button>
+<p>接收消息：<output data-testid="message-status" data-state="idle">idle</output>；来源：<output data-testid="message-origin">none</output>；拒绝计数：<output data-testid="rejected-count">0</output></p>
+<p>每条记录保留真实 WindowProxy；必须同时匹配 origin、source、请求ID和合成账号。success 仅表示合成消息匹配，不表示原生同窗标签或真实认证通过。</p>
+<ol data-testid="popup-list"></ol>
+</section>
+<section aria-label="原生权限探测">
+<h2>远程页原生权限边界（只读）</h2>
+<button data-testid="probe-native" disabled>尝试 workspace_snapshot（不显示返回数据）</button>
+<p><output data-testid="native-status" data-state="untested">untested</output>。普通浏览器无桥接只能记 unavailable；拒绝原因须用原生脱敏诊断确认，不能把命令不存在当作权限正确。</p>
+</section>
+</body></html>

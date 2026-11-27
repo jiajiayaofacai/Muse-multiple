@@ -1,0 +1,47 @@
+name: Verify
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci --prefix app
+      - run: npm --prefix app run typecheck
+      - run: npm --prefix app run lint
+      - run: npm --prefix app run test:coverage
+      - run: npm --prefix app run test:sites
+      - run: npx playwright install msedge
+        working-directory: app
+      - run: npm --prefix app run test:connectors
+      - run: npm --prefix app run build
+      - run: node --test app/tests/e2e/settings-menu.test.cjs
+
+  rust:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - run: cargo fmt --check
+        working-directory: app/src-tauri
+      - run: cargo clippy --locked --all-targets -- -D warnings
+        working-directory: app/src-tauri
+      - run: cargo test --locked -j 1
+        working-directory: app/src-tauri
+      - run: cargo build --locked -j 1
+        working-directory: app/src-tauri

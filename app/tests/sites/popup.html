@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>合成认证页</title><script src="/fixture.js" defer></script></head>
+<body data-testid="popup-page">
+<h1>第二源合成认证页：不是 Muse 登录</h1>
+<p>无密码、验证码输入，不记录真实凭据。两个端口是 cross-origin，不是完整跨站代理；Cookie 不按端口隔离，不能模拟所有第三方 Cookie / SameSite / HTTPS 条件。</p>
+<p>当前源：<output data-testid="current-origin"></output>；页面状态：<output data-testid="page-status" data-state="loading">loading</output></p>
+<p>合成连接器授权（不是普通登录），当前嵌套请求：<output data-testid="connection-status" data-state="not-connected">not-connected</output>。只有来源匹配的回调才标记 connected-synthetic；发送或关页本身不代表成功。</p>
+<section aria-label="回调与关闭">
+<h2>用户动作后才回传</h2>
+<p>请求合成账号：<output data-testid="request-account">none</output>；opener：<output data-testid="opener-status" data-state="unknown">unknown</output></p>
+<button data-testid="complete-auth" disabled>用户确认合成结果 → postMessage 给 opener → window.close</button>
+<button data-testid="close-opener" disabled>探测关闭 opener（会尝试关闭来源标签）</button>
+<button data-testid="close-self" disabled>仅 window.close 自己（不回传）</button>
+<p>发送：<output data-testid="send-status" data-state="idle">idle</output>；关闭 opener：<output data-testid="close-opener-status" data-state="idle">idle</output></p>
+<p>直接访问认证页没有合法请求时不可回传。发送不代表收到；以直接 opener 的消息记录和 closed 状态为准。关闭 opener 可能被引擎拒绝，须如实记录。</p>
+</section>
+<section aria-label="合成存储">
+<h2>第二源浏览资料存储（和父源独立核查）</h2>
+<label>合成账号 <select data-testid="account-select"><option>A</option><option>B</option></select></label>
+<label>当前标签标记 <select data-testid="tab-select"><option>T1</option><option>T2</option><option>T3</option></select></label>
+<button data-testid="write-storage" disabled>写入四类存储</button>
+<button data-testid="write-session" disabled>只改本标签 sessionStorage</button>
+<button data-testid="read-storage" disabled>读取本页存储</button>
+<button data-testid="clear-storage" disabled>仅清除本测试键（需确认）</button>
+<p>存储操作：<output data-testid="storage-status" data-state="idle">idle</output></p>
+<dl>
+<dt>持久 Cookie（合成测试键，1天）</dt><dd><output data-testid="cookie-value">unread</output></dd>
+<dt>localStorage（合成测试键）</dt><dd><output data-testid="local-value">unread</output></dd>
+<dt>sessionStorage（合成测试键）</dt><dd><output data-testid="session-value">unread</output></dd>
+<dt>IndexedDB（合成测试数据库 / identity / account）</dt><dd><output data-testid="indexeddb-value">unread</output></dd>
+</dl>
+</section>
+<section aria-label="嵌套新窗口关联">
+<h2>嵌套 window.open</h2>
+<button data-testid="open-popup" disabled>从认证页真实 window.open 下一层认证页（可重复）</button>
+<p>接收消息：<output data-testid="message-status" data-state="idle">idle</output>；来源：<output data-testid="message-origin">none</output>；拒绝计数：<output data-testid="rejected-count">0</output></p>
+<p>嵌套结果只回直接 opener，不向祖先冒充回调。success 仅表示合成消息匹配。</p>
+<ol data-testid="popup-list"></ol>
+</section>
+<section aria-label="原生权限探测">
+<h2>远程页原生权限边界（只读）</h2>
+<button data-testid="probe-native" disabled>尝试 workspace_snapshot（不显示返回数据）</button>
+<p><output data-testid="native-status" data-state="untested">untested</output>。无桥接是 unavailable，拒绝原因待原生诊断确认，不自动判通过。</p>
+</section>
+</body></html>
