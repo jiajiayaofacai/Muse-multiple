@@ -1,14 +1,15 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WorkspaceSnapshot } from '../../contracts/workspace';
 import { accountMenuModel, attachAccountMenu } from './account-menu';
 
-const snapshot: WorkspaceSnapshot = {
+const initialSnapshot: WorkspaceSnapshot = {
   revision: 1,
   accounts: [{ id: 'a', name: 'A', note: '', lastUsedAt: 0 }],
   tabs: [], runtimes: [], diagnostics: [], activeAccountId: null, gateStatus: 'ready',
   settings: { closeBehavior: 'exit', theme: 'system', uiZoomPercent: 100, webZoomPercent: 100, autoSleepMinutes: 15, proxy: { enabled: false, scheme: 'http', host: '', port: 0 } },
 };
+let snapshot: WorkspaceSnapshot;
 
 const rect = (top: number, bottom: number, height = bottom - top) => ({ x: 0, y: top, top, right: 200, bottom, left: 0, width: 200, height, toJSON: () => ({}) }) as DOMRect;
 
@@ -25,9 +26,10 @@ function mountMenu(rowTop = 20, rowBottom = 60, sidebarHeight = 400, clientHeigh
   trigger.getBoundingClientRect = () => rect(rowTop, rowBottom);
   accountList.getBoundingClientRect = () => rect(0, 400, 400);
   vi.stubGlobal('CSS', { escape: (value: string) => value });
-  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
+  const observerDisconnect = vi.fn();
+  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() { observerDisconnect(); } });
   const api = attachAccountMenu(sidebar, id => accountMenuModel(snapshot, id));
-  return { api, sidebar, trigger, menu };
+  return { api, sidebar, trigger, menu, observerDisconnect };
 }
 
 function key(target: Element, name: string) {
@@ -40,6 +42,7 @@ function click(target: Element) {
   target.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 }
 
+beforeEach(() => { snapshot = { ...initialSnapshot, accounts: [...initialSnapshot.accounts], tabs: [], runtimes: [], diagnostics: [] }; });
 afterEach(() => {
   vi.unstubAllGlobals();
   document.body.innerHTML = '';
@@ -124,7 +127,11 @@ describe('账号操作菜单 DOM 交互', () => {
     click(trigger);
     const refresh = menu.querySelector<HTMLButtonElement>('[data-action="edit-account"]')!;
     refresh.focus();
+    snapshot = { ...snapshot, runtimes: [{ accountId: 'a', lifecycle: 'sleeping', sessionStatus: 'unknown', activeTabId: null, protectionReasons: [] }] };
     api.refresh();
+    const recreated = menu.querySelector<HTMLButtonElement>('[data-action="edit-account"]')!;
+    expect(recreated).not.toBe(refresh);
+    expect(recreated).toBe(document.activeElement);
     expect(menu.querySelector('[data-action="edit-account"]')).toBe(document.activeElement);
     trigger.disabled = true;
     api.refresh();
@@ -133,12 +140,13 @@ describe('账号操作菜单 DOM 交互', () => {
   });
 
   it('dispose 中止事件监听并断开尺寸观察', () => {
-    const { api, trigger, menu } = mountMenu(20, 60, 0, 200);
+    const { api, trigger, menu, observerDisconnect } = mountMenu(20, 60, 0, 200);
     click(trigger);
     expect(menu.hidden).toBe(false);
     api.dispose();
     expect(menu.hidden).toBe(true);
     click(trigger);
     expect(menu.hidden).toBe(true);
+    expect(observerDisconnect).toHaveBeenCalledTimes(1);
   });
 });

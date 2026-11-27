@@ -352,6 +352,7 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
     if (action === 'console') {
       consoleOpen = !consoleOpen;
       consolePanel.hidden = !consoleOpen;
+      renderConsole();
       const toggle = find<HTMLButtonElement>('.top-actions [data-action="console"]');
       toggle.setAttribute('aria-expanded', String(consoleOpen));
       toggle.classList.toggle('active', consoleOpen);
