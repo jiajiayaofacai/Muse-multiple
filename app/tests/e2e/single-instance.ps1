@@ -19,7 +19,7 @@ public static class MuseWindow {
     [DllImport("user32")] public static extern bool PostMessageW(IntPtr window, uint msg, IntPtr w, IntPtr l);
     public static IntPtr Shell(int pid) {
         var h = IntPtr.Zero;
-        while ((h = FindWindowEx(IntPtr.Zero, h, null, "Muse-multiple")) != IntPtr.Zero) {
+        while ((h = FindWindowEx(IntPtr.Zero, h, "Tauri Window", null)) != IntPtr.Zero) {
             GetWindowThreadProcessId(h, out uint owner);
             if (owner == pid) return h;
         }
