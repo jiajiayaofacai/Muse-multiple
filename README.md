@@ -4,6 +4,18 @@
 
 **当前阶段：M1–M6 功能已实现；本轮按“仅 MSI”范围审查并复测通过。** 前端、合成站点、Rust 全套测试/Clippy/格式检查、Release 构建和 MSI 生成通过。MSI 尚未实际安装启动；真实 Muse A/B 隔离、会话恢复及连接器服务仍待人工验收。
 
+## 程序界面
+
+以下截图来自工作台前端，使用演示账号和状态数据。账号工作区展示未打开网页的状态；四张图均不含真实 Muse 页面或登录信息。
+
+| 首页 | 仪表盘 |
+| --- | --- |
+| ![工作台首页](docs/screenshots/home.png) | ![账号仪表盘](docs/screenshots/dashboard.png) |
+
+| 账号工作区 | 设置 |
+| --- | --- |
+| ![账号工作区未打开标签页的状态](docs/screenshots/account-workspace.png) | ![工作台设置](docs/screenshots/settings.png) |
+
 ## 项目入口
 
 - [已批准执行计划](specs/EXECUTION_PLAN.md)：开发顺序、并行子代理职责、技术闸门与验收条件。
