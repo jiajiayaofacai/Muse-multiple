@@ -10,6 +10,7 @@ const paths = {
   book: '<path d="M12 5v16M3 4q5-2 9 1 4-3 9-1v15q-5-2-9 1-4-3-9-1z"/>',
   external: '<path d="M14 3h7v7m0-7L10 14m0-10H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-5"/>',
   settings: '<path d="m9 3-1 3-3 1-2 4 2 2v4l4 2 1 2h4l1-2 4-2v-4l2-2-2-4-3-1-1-3z"/><circle cx="12" cy="12" r="3"/>',
+  more: '<circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>',
   panel: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16m7-11-3 3 3 3"/>',
   chevron: '<path d="m9 5 7 7-7 7"/>',
   back: '<path d="M19 12H5m6-6-6 6 6 6"/>',

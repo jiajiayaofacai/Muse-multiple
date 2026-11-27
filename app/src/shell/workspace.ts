@@ -1,7 +1,7 @@
 import type { SettingsDto, TabDto, WorkspaceAction, WorkspaceSnapshot } from '../../contracts/workspace';
 import { NativeBridge, safeError } from '../bridge/native';
 import { NativeLayout } from '../bridge/layout';
-import { accountMetadata, acceptSnapshot, navigationUrl, sessionLabels } from '../features/workspace-state';
+import { accountMetadata, acceptSnapshot, navigationUrl } from '../features/workspace-state';
 import { dashboardPage, homePage, settingsPage } from '../features/pages';
 import { accountRequestNotice, accountTabStrip, browserEmptyState } from '../features/browser-content';
 import { parseProxyEndpoint } from '../features/proxy-settings';
@@ -122,8 +122,7 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
       .filter(account => !search || `${account.name}\n${account.note}`.toLocaleLowerCase().includes(search));
     return `${visibleAccounts.map(account => {
       const isSelected = account.id === selected;
-      const runtime = snapshot?.runtimes.find(item => item.accountId === account.id);
-      return `<div class="account-item"><button class="account-row ${isSelected ? 'active' : ''}" data-action="select-account" data-id="${esc(account.id)}" title="${esc(account.name)}${isSelected ? ' · 当前账号' : ''}" ${ready ? '' : 'disabled'} ${isSelected ? 'aria-current="page"' : ''}><span class="avatar">${esc(Array.from(account.name)[0] ?? 'M')}</span><span class="account-copy"><span class="account-name">${esc(account.name)}</span>${account.note ? `<small class="account-note">${esc(account.note)}</small>` : ''}${isSelected ? `<small>${runtime ? sessionLabels[runtime.sessionStatus] : '登录状态未验证'}</small>` : ''}</span>${isSelected ? '<span class="current-label">当前</span>' : ''}</button><button class="icon-button account-menu-trigger" data-action="account-menu" data-id="${esc(account.id)}" aria-label="${esc(account.name)} 的账号操作" aria-haspopup="menu" aria-expanded="false" title="账号操作" ${ready ? '' : 'disabled'}>${icon('settings')}</button></div>`;
+      return `<div class="account-item"><button class="account-row ${isSelected ? 'active' : ''}" data-action="select-account" data-id="${esc(account.id)}" title="${esc(account.name)}${isSelected ? ' · 当前账号' : ''}" ${ready ? '' : 'disabled'} ${isSelected ? 'aria-current="page"' : ''}><span class="avatar">${esc(Array.from(account.name)[0] ?? 'M')}</span><span class="account-copy"><span class="account-name">${esc(account.name)}</span>${account.note ? `<small class="account-note">${esc(account.note)}</small>` : ''}</span>${isSelected ? '<span class="current-label">当前</span>' : ''}</button><button class="icon-button account-menu-trigger" data-action="account-menu" data-id="${esc(account.id)}" aria-label="${esc(account.name)} 的账号操作" aria-haspopup="menu" aria-expanded="false" title="更多账号操作" ${ready ? '' : 'disabled'}>${icon('more')}</button></div>`;
     }).join('')}${accounts.length && !visibleAccounts.length ? '<p class="sidebar-empty">没有匹配的账号</p>' : ''}${!accounts.length ? `<p class="sidebar-empty">${snapshot ? '尚无账号档案' : '等待原生连接'}</p>` : ''}`;
   }
 

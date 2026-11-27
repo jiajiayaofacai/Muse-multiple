@@ -45,6 +45,16 @@ test('settings update and proxy form, and account-scoped dropdown', async t => {
     };
   });
   await page.goto(shell);
+  await expect(page.locator('.recent-card').first()).not.toContainText(/登录状态|认证进行中|需要重新认证/);
+  await page.locator('.recent-card').first().click();
+  const activeAccountRow = page.locator('.account-row.active');
+  await expect(activeAccountRow).toContainText('A');
+  await expect(activeAccountRow).not.toContainText(/登录状态|认证进行中|需要重新认证/);
+  const accountMenuButton = page.getByRole('button', { name: 'A 的账号操作' });
+  await expect(accountMenuButton.locator('svg circle')).toHaveCount(3);
+  await page.locator('.top-actions [data-action="dashboard"]').click();
+  await expect(page.locator('.overview-table')).toContainText('登录状态未验证');
+  await expect(page.locator('body')).not.toContainText(/参考接口|非官方/);
   const gear = page.getByRole('button', { name: 'B 的账号操作' });
   await gear.click();
   const menu = page.getByRole('menu', { name: 'B 的账号操作' });
@@ -61,7 +71,7 @@ test('settings update and proxy form, and account-scoped dropdown', async t => {
   await page.getByRole('button', { name: '取消', exact: true }).last().click();
   await gear.click();
   await menu.getByRole('menuitem', { name: '删除此账号' }).click(); // Auto-dismiss confirmation.
-  assert.deepEqual(await page.evaluate(() => window.testActions), []);
+  assert.deepEqual(await page.evaluate(() => window.testActions), [{ type: 'activateAccount', accountId: 'A' }]);
   await gear.click();
   await page.locator('.sidebar [data-action="settings"]').click();
   await expect(menu).toBeHidden();
@@ -89,7 +99,7 @@ test('settings update and proxy form, and account-scoped dropdown', async t => {
   await page.getByRole('spinbutton', { name: '代理端口' }).fill('1080');
   await save.click();
   await expect(page.locator('.settings-save-status')).toContainText('已保存');
-  assert.deepEqual((await page.evaluate(() => window.testActions))[0].settings.proxy, { enabled: true, scheme: 'socks5', host: '127.0.0.1', port: 1080 });
+  assert.deepEqual((await page.evaluate(() => window.testActions)).find(action => action.type === 'updateSettings').settings.proxy, { enabled: true, scheme: 'socks5', host: '127.0.0.1', port: 1080 });
   await host.fill('https://secure-proxy.example:7161');
   await save.click();
   await expect(page.locator('.settings-save-status')).toContainText('已保存');

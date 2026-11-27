@@ -57,3 +57,20 @@ describe('阶段标记文案', () => {
     expect(dashboard).toContain('不代表真实 Muse 认证与免重复登录已验证');
   });
 });
+const accountStatusSnapshot: WorkspaceSnapshot = {
+  ...snapshot,
+  accounts: [{ id: 'a', name: 'A', note: '', lastUsedAt: 0 }],
+  runtimes: [{ accountId: 'a', lifecycle: 'active', sessionStatus: 'unknown', activeTabId: null, protectionReasons: [] }],
+};
+
+describe('账号状态显示位置', () => {
+  it('首页不显示会话状态，仪表盘显示且不标注参考接口非官方', () => {
+    const home = homePage(accountStatusSnapshot, true);
+    const dashboard = dashboardPage(accountStatusSnapshot);
+
+    expect(home).not.toContain('登录状态未验证');
+    expect(dashboard).toContain('会话状态');
+    expect(dashboard).toContain('登录状态未验证');
+    expect(home + dashboard).not.toMatch(/参考接口|非官方/);
+  });
+});
