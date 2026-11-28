@@ -572,11 +572,14 @@ describe('创意台任务、草稿和连接隔离', () => {
     expect(button.disabled).toBe(true);
     expect(get('#creative-file-error').textContent).toContain('PNG');
     submitTask('不能提交');
+    expect(document.activeElement).toBe(get<HTMLInputElement>('#creative-reference'));
     expect(runtime.generateImage).not.toHaveBeenCalled();
     click(root, '[data-action="creative-remove-reference"]');
     expect(button.disabled).toBe(false);
     submitTask('  ');
     expect(get('#creative-submit-error').textContent).toContain('提示词');
+    expect(document.activeElement).toBe(get<HTMLTextAreaElement>('#creative-prompt'));
+    expect(get<HTMLTextAreaElement>('#creative-prompt').getAttribute('aria-invalid')).toBe('true');
     expect(runtime.generateImage).not.toHaveBeenCalled();
     runtime.generateImage.mockRejectedValueOnce({ safeMessage: '合成提交失败' });
     submitTask('合成重试'); await settle();

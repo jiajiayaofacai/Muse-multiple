@@ -152,11 +152,17 @@ export function createCreativeWorkbench(host: HTMLElement, bridge: NativeBridge)
   async function generate(view: View) {
     if (!host.contains(view.page) || !usable() || view.submitting) return;
     const fileProblem = referenceError(view.file.files);
-    find(view.page, '#creative-file-error').textContent = fileProblem;
+    const fileError = find(view.page, '#creative-file-error');
+    fileError.textContent = fileProblem;
     const error = find(view.page, '#creative-submit-error');
     const prompt = view.prompt.value.trim(), aspect = view.aspect.value;
-    error.textContent = generationError(view.mode, prompt, aspect);
-    if (fileProblem || error.textContent) return;
+    const promptProblem = generationError(view.mode, prompt, aspect);
+    error.textContent = promptProblem;
+    view.file.setAttribute('aria-invalid', String(!!fileProblem));
+    view.prompt.setAttribute('aria-invalid', String(!!promptProblem));
+    if (fileProblem) { view.file.focus(); return; }
+    if (promptProblem) { view.prompt.focus(); return; }
+
     const version = session;
     view.submitting = true;
     refreshSubmit(view);
