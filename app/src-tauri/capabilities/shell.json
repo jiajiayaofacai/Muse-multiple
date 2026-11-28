@@ -3,5 +3,5 @@
   "identifier": "shell",
   "description": "Only the bundled local shell may manage accounts and views. Remote views have no capability.",
   "webviews": ["shell"],
-  "permissions": ["core:event:allow-listen", "core:event:allow-unlisten", "allow-workspace-snapshot", "allow-workspace-action", "allow-workspace-layout", "allow-workspace-layout-begin"]
+  "permissions": ["core:event:allow-listen", "core:event:allow-unlisten", "allow-workspace-snapshot", "allow-workspace-action", "allow-workspace-layout", "allow-workspace-layout-begin", "allow-creative-studio"]
 }
