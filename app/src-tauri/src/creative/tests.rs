@@ -397,7 +397,7 @@ fn save_requeries_task_and_streams_raw_media_without_bearer_to_unique_files() {
         names.push(name);
     }
     assert_ne!(names[0], names[1]);
-    for pair in server.join().unwrap().chunks_exact(2) {
+    for pair in server.join().unwrap().as_chunks::<2>().0 {
         assert!(
             pair[0]
                 .headers
