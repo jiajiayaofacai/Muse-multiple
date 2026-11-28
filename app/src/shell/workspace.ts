@@ -3,6 +3,7 @@ import { NativeBridge, safeError } from '../bridge/native';
 import { NativeLayout } from '../bridge/layout';
 import { accountMetadata, acceptSnapshot, navigationUrl } from '../features/workspace-state';
 import { dashboardPage, homePage, settingsPage } from '../features/pages';
+import { createCreativeWorkbench } from '../features/creative-controller';
 import { accountRequestNotice, accountTabStrip, browserEmptyState } from '../features/browser-content';
 import { parseProxyEndpoint } from '../features/proxy-settings';
 import { checkLatestRelease } from '../features/update';
@@ -10,7 +11,7 @@ import { accountMenuModel, attachAccountMenu } from './account-menu';
 import { escapeHtml as esc, icon } from '../ui/markup';
 import './workspace.css';
 
-type Route = 'home' | 'dashboard' | 'settings' | 'account';
+type Route = 'home' | 'dashboard' | 'settings' | 'account' | 'creative-image' | 'creative-video';
 
 export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
   const bridge = new NativeBridge();
@@ -34,6 +35,7 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
   let editingAccountId: string | null = null;
   let updateStatus = '等待检查';
   let checkingUpdates = false;
+  let creativeExpanded = false;
 
   root.innerHTML = `<div class="workspace-shell">
     <header class="topbar"><button class="brand" data-action="home" aria-label="Muse-multiple 首页"><span class="brand-mark">M</span><span>Muse<span class="brand-light">-multiple</span></span></button>
@@ -59,6 +61,7 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
   const shell = find('.workspace-shell');
   const sidebar = find('.sidebar');
   const page = find('.page-view');
+  const studio = createCreativeWorkbench(page, bridge);
   const browser = find('.browser-view');
   const slot = find('.native-slot');
   const placeholder = find('.slot-placeholder');
@@ -106,7 +109,7 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
     snapshot = next;
     if (selectedAccountId && !snapshot.accounts.some(account => account.id === selectedAccountId)) {
       selectedAccountId = null;
-      route = 'home';
+      if (route === 'account') route = 'home';
     }
     render();
   }
@@ -134,6 +137,8 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
       <div class="account-group"><button class="group-toggle" data-action="toggle-accounts" aria-expanded="${accountsExpanded}" aria-controls="account-list"><span class="group-chevron ${accountsExpanded ? 'expanded' : ''}">${icon('chevron')}</span><span class="nav-label">对话 / 账号</span><span class="nav-count">${snapshot ? accounts.length : '—'}</span></button>
       ${accounts.length ? `<input class="account-search" aria-label="搜索账号名称或备注" placeholder="搜索账号" value="${esc(accountSearch)}">` : ''}
       <div id="account-list" class="accounts">${accountRowsMarkup()}</div></div>
+      <div class="creative-group"><button class="group-toggle ${route.startsWith('creative-') ? 'active' : ''}" data-action="toggle-creative" aria-expanded="${creativeExpanded}" aria-controls="creative-list" title="创意台"><span class="group-chevron ${creativeExpanded ? 'expanded' : ''}">${icon('chevron')}</span><span class="nav-label">创意台</span></button>
+      <div class="creative-subnav" id="creative-list" ${creativeExpanded ? '' : 'hidden'}><button class="creative-link ${route === 'creative-image' ? 'active' : ''}" data-action="creative-image" title="图片工作台" ${route === 'creative-image' ? 'aria-current="page"' : ''}>${icon('image')}<span class="nav-label">图片工作台</span></button><button class="creative-link ${route === 'creative-video' ? 'active' : ''}" data-action="creative-video" title="视频工作台" ${route === 'creative-video' ? 'aria-current="page"' : ''}>${icon('video')}<span class="nav-label">视频工作台</span></button></div></div>
       <button class="nav-button add-nav" data-action="add-account" title="添加 Muse 账号${ready ? '' : '（需连接原生运行时）'}" ${ready ? '' : 'disabled'}>${icon('plus')}<span class="nav-label">添加 Muse 账号</span></button>
       <div class="sidebar-bottom"><button class="nav-button ${route === 'settings' ? 'active' : ''}" data-action="settings" ${route === 'settings' ? 'aria-current="page"' : ''} title="设置：管理工作台偏好">${icon('settings')}<span class="nav-label">设置</span></button><button class="nav-button collapse-button" data-action="collapse-sidebar" title="展开或收起侧栏" aria-label="展开或收起侧栏" aria-expanded="${!shell.classList.contains('compact')}">${icon('panel')}<span class="nav-label">收起侧栏</span></button></div>`;
     sidebar.append(menu);
@@ -183,6 +188,7 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
     shell.style.zoom = preferences ? `${preferences.uiZoomPercent}%` : '100%';
     page.hidden = route === 'account';
     browser.hidden = route !== 'account';
+    studio.show(route === 'creative-image' ? 'image' : route === 'creative-video' ? 'video' : null, ready);
     if (route === 'home') page.innerHTML = homePage(snapshot, ready);
     if (route === 'dashboard') page.innerHTML = dashboardPage(snapshot);
     if (route === 'settings') {
@@ -298,7 +304,11 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
     const button = (event.target as Element).closest<HTMLButtonElement>('button[data-action]');
     if (!button || button.disabled || !root.contains(button)) return;
     const action = button.dataset.action;
-    if (action === 'home' || action === 'dashboard' || action === 'settings') return navigatePage(action);
+    if (action === 'home' || action === 'dashboard' || action === 'settings' || action === 'creative-image' || action === 'creative-video') {
+      if (action === 'creative-image' || action === 'creative-video') creativeExpanded = true;
+      return navigatePage(action);
+    }
+    if (action === 'toggle-creative') { creativeExpanded = !creativeExpanded; renderSidebar(); sidebar.querySelector<HTMLButtonElement>('[data-action="toggle-creative"]')?.focus(); return; }
     if (action === 'edit-account') return openDialog('edit-account', button.dataset.id ?? '');
     if (action === 'select-account') return selectAccount(button.dataset.id ?? '');
     if (action === 'retry-profile-cleanup') {
@@ -528,6 +538,7 @@ export async function mountWorkspace(root: HTMLElement): Promise<() => void> {
   const dispose = (): void => {
     if (disposed) return;
     disposed = true;
+    studio.dispose();
     root.removeEventListener('click', clickHandler);
     root.removeEventListener('submit', submitHandler);
     root.removeEventListener('input', inputHandler);

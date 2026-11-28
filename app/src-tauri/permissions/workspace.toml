@@ -17,3 +17,8 @@ commands.allow = ["workspace_layout"]
 identifier = "allow-workspace-layout-begin"
 description = "Hide old views and start a shell layout session"
 commands.allow = ["workspace_layout_begin"]
+
+[[permission]]
+identifier = "allow-creative-studio"
+description = "Connect to the local Muse2API service and manage creative generation tasks"
+commands.allow = ["creative_status", "creative_connect", "creative_disconnect", "creative_generate_image", "creative_generate_video", "creative_get_task", "creative_save_result"]

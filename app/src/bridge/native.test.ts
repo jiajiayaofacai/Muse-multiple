@@ -123,3 +123,41 @@ describe('safeError', () => {
     expect(safeError(null)).toContain('原生操作未完成');
   });
 });
+
+describe('创意服务桥接', () => {
+  it('创意命令仅通过受信 Tauri 桥接发送', async () => {
+    const bridge = new NativeBridge();
+    native.invoke.mockResolvedValueOnce({ connected: true, baseUrl: 'http://127.0.0.1:18610/' });
+    await bridge.connectCreative('http://127.0.0.1:18610', 'm2a-test-key');
+    expect(native.invoke).toHaveBeenCalledExactlyOnceWith('creative_connect', {
+      baseUrl: 'http://127.0.0.1:18610', apiKey: 'm2a-test-key',
+    });
+  });
+
+  it('分别提交图片和视频，仅用任务类型和编号查询、保存结果', async () => {
+    const bridge = new NativeBridge();
+    const referenceImage = 'data:image/png;base64,iVBORw0KGgo=';
+    await bridge.creativeStatus();
+    await bridge.generateImage('灯塔', '1024x1024', referenceImage);
+    await bridge.generateVideo('镜头拉远', '16:9');
+    await bridge.creativeTask('video', 'task_v');
+    await bridge.saveCreativeResult('video', 'task_v');
+    await bridge.disconnectCreative();
+    expect(native.invoke.mock.calls).toEqual([
+      ['creative_status', undefined],
+      ['creative_generate_image', { prompt: '灯塔', size: '1024x1024', referenceImage }],
+      ['creative_generate_video', { prompt: '镜头拉远', aspectRatio: '16:9', referenceImage: null }],
+      ['creative_get_task', { mode: 'video', taskId: 'task_v' }],
+      ['creative_save_result', { mode: 'video', taskId: 'task_v' }],
+      ['creative_disconnect', undefined],
+    ]);
+  });
+
+  it('非 Tauri 页面拒绝所有创意服务调用', async () => {
+    native.isTauri.mockReturnValue(false);
+    const bridge = new NativeBridge();
+    await expect(bridge.creativeStatus()).rejects.toThrow('native-runtime-unavailable');
+    expect(native.invoke).not.toHaveBeenCalled();
+  });
+
+});

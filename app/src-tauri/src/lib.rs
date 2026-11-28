@@ -2,6 +2,7 @@
 
 use tauri::Manager;
 mod browser;
+mod creative;
 
 fn trusted_shell(label: &str, url: &tauri::Url) -> bool {
     if label != "shell" {
@@ -117,6 +118,7 @@ fn install_tray(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>
 
 pub fn run() {
     let result = tauri::Builder::default()
+        .manage(creative::StudioState::default())
         .setup(|app| {
             let config = &app.config().app.windows[0];
             let mut window = tauri::WebviewWindowBuilder::from_config(app, config)?;
@@ -141,7 +143,14 @@ pub fn run() {
             workspace_snapshot,
             workspace_action,
             workspace_layout,
-            workspace_layout_begin
+            workspace_layout_begin,
+            creative::creative_status,
+            creative::creative_connect,
+            creative::creative_disconnect,
+            creative::creative_generate_image,
+            creative::creative_generate_video,
+            creative::creative_get_task,
+            creative::creative_save_result
         ])
         .run(tauri::generate_context!());
     if let Err(error) = result {

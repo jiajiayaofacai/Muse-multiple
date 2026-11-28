@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-creative-get-task"
+description = "Enables the creative_get_task command without any pre-configured scope."
+commands.allow = ["creative_get_task"]
+
+[[permission]]
+identifier = "deny-creative-get-task"
+description = "Denies the creative_get_task command without any pre-configured scope."
+commands.deny = ["creative_get_task"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-creative-status"
+description = "Enables the creative_status command without any pre-configured scope."
+commands.allow = ["creative_status"]
+
+[[permission]]
+identifier = "deny-creative-status"
+description = "Denies the creative_status command without any pre-configured scope."
+commands.deny = ["creative_status"]

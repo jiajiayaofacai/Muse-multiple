@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-creative-connect"
+description = "Enables the creative_connect command without any pre-configured scope."
+commands.allow = ["creative_connect"]
+
+[[permission]]
+identifier = "deny-creative-connect"
+description = "Denies the creative_connect command without any pre-configured scope."
+commands.deny = ["creative_connect"]
